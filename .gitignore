@@ -1,0 +1,6 @@
+build/
+cuda_micro_bench
+*.o
+*.ptx
+*.cubin
+*.fatbin
