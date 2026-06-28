@@ -2,6 +2,9 @@
 
 A comprehensive micro-benchmarking repository for NVIDIA GPUs, written in CUDA C++ and inline PTX. It measures the key micro-architectural characteristics of NVIDIA GPUs at the instruction and SM level.
 
+**Live report:** https://qq332982511.github.io/cuda_micro_bench/  
+**Source code:** https://github.com/qq332982511/cuda_micro_bench
+
 ## Reference
 
 Inspired by [zartbot/micro_arch](https://github.com/zartbot/micro_arch.git), this project focuses on NVIDIA GPUs and uses CUDA/PTX to measure:
