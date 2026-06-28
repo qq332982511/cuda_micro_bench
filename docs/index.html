@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CUDA Micro-benchmark Report · cuda_micro_bench</title>
+  <link rel="stylesheet" href="assets/css/style.css" />
+  <style>
+    .metric-table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+    .metric-table th, .metric-table td { padding: 0.65rem 0.75rem; border-bottom: 1px solid var(--rule); }
+    .metric-table th { text-align: left; color: var(--ink-4); font-weight: 600; text-transform: uppercase; font-size: 0.72rem; letter-spacing: 0.08em; }
+    .metric-table td { color: var(--ink-2); }
+    .metric-table tr:hover { background: var(--bg-2); }
+    .metric-name { font-weight: 500; color: var(--ink); }
+    .unit { color: var(--ink-4); font-size: 0.85em; }
+    .value-mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+    .section-card { background: var(--paper); border: 1px solid var(--rule); border-radius: 12px; padding: 1.25rem; margin-bottom: 1.5rem; box-shadow: var(--shadow-sm); }
+    .section-card h2 { margin: 0 0 0.75rem; font-size: 1.25rem; color: var(--ink); }
+    .section-card p.note { margin: 0 0 1rem; color: var(--ink-3); font-size: 0.9rem; }
+    #status .error { background: var(--rose-soft); color: var(--rose); padding: 1rem; border-radius: 8px; margin-bottom: 1rem; }
+    .arch-svg { width: 100%; height: auto; font-family: var(--mono); }
+    .arch-box { fill: var(--bg-2); stroke: var(--rule); stroke-width: 1.5; }
+    .arch-pipe { fill: #f6f8fb; stroke: #9fb3c8; stroke-width: 1.5; }
+    .arch-mem { fill: #fff9e6; stroke: #e6c86e; stroke-width: 1.5; }
+    .arch-label { font-size: 12px; fill: var(--ink); font-weight: 600; }
+    .arch-sub { font-size: 10px; fill: var(--ink-3); }
+    .arch-value { font-size: 10px; fill: var(--ink-2); }
+    .arch-title { font-size: 13px; fill: var(--ink); font-weight: 700; }
+    .arch-arrow { stroke: var(--ink-4); stroke-width: 1.5; fill: none; marker-end: url(#arrowhead); }
+    .arch-line { stroke: var(--rule); stroke-width: 1.5; }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <aside class="toc">
+      <div class="toc-brand">cuda_micro_bench <span class="accent">SM_120</span></div>
+      <span class="toc-tag">BENCHMARK REPORT</span>
+      <h4>Sections</h4>
+      <a href="#hero">Overview</a>
+      <a href="#arch-diagram">Architecture Diagram</a>
+      <a href="#topology">Topology</a>
+      <a href="#pipeline">Pipeline Depth</a>
+      <a href="#coissue">Co-Issue</a>
+      <a href="#tma">TMA</a>
+      <a href="#clock">Clock</a>
+      <a href="#memory">Memory</a>
+      <a href="#memory-more">Memory More</a>
+      <a href="#instructions">Instructions</a>
+      <a href="#more-instructions">More Instructions</a>
+      <a href="#instruction-throughput">Instruction Throughput</a>
+      <a href="#tensor">Tensor Core</a>
+      <a href="#tensor-more">Tensor Core More</a>
+      <a href="#atomics">Atomics</a>
+      <a href="#barriers">Barriers &amp; Sync</a>
+      <a href="#shuffle">Warp Shuffle</a>
+      <a href="#collectives">Collectives &amp; Divergence</a>
+      <a href="#pcie">PCIe &amp; Launch</a>
+      <a href="#cluster">Cluster</a>
+    </aside>
+
+    <main class="content">
+      <header class="hero" id="hero">
+        <div class="hero-eyebrow"><span class="pulse"></span>CUDA / PTX Microbenchmark</div>
+        <h1 class="hero-title">SM_120 Microarchitecture <em>Measured</em></h1>
+        <p class="hero-sub">Cycle-level characterization of an NVIDIA Blackwell GPU, synthesized from inline-PTX microbenchmarks.</p>
+        <div class="hero-meta" id="hero-meta"></div>
+      </header>
+
+      <div id="status"></div>
+
+      <section class="section-card" id="arch-diagram">
+        <h2>Microarchitecture Diagram</h2>
+        <p class="note">Simplified SM block diagram and memory hierarchy, annotated with measured latency/throughput values. Peak issue throughput comes from the SMSP count and saturated instruction benchmarks.</p>
+        <svg class="arch-svg" viewBox="0 0 920 720" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+              <polygon points="0 0, 8 3, 0 6" fill="var(--ink-4)" />
+            </marker>
+          </defs>
+
+          <!-- Front end -->
+          <rect x="310" y="20" width="300" height="44" rx="6" class="arch-box" />
+          <text x="460" y="40" text-anchor="middle" class="arch-title">Instruction Fetch / Decode</text>
+          <text x="460" y="55" text-anchor="middle" class="arch-sub">1 instruction cache line = 64 B</text>
+
+          <rect x="360" y="78" width="200" height="34" rx="6" class="arch-box" />
+          <text x="460" y="95" text-anchor="middle" class="arch-title">Warp Scheduler</text>
+          <text x="460" y="108" text-anchor="middle" class="arch-sub">4 SMSPs / SM · <tspan id="arch-warps-per-smsp">12</tspan> warps/SMSP</text>
+
+          <!-- SMSPs -->
+          <g id="smsp-group">
+            <rect x="60" y="130" width="170" height="70" rx="6" class="arch-box" />
+            <text x="145" y="152" text-anchor="middle" class="arch-title">SMSP 0</text>
+            <text x="145" y="170" text-anchor="middle" class="arch-value">issue: 1 warp inst/cyc</text>
+            <text x="145" y="185" text-anchor="middle" class="arch-sub">I-buffer FFMA <tspan id="arch-ibuffer-ffma">8</tspan></text>
+
+            <rect x="255" y="130" width="170" height="70" rx="6" class="arch-box" />
+            <text x="340" y="152" text-anchor="middle" class="arch-title">SMSP 1</text>
+            <text x="340" y="170" text-anchor="middle" class="arch-value">issue: 1 warp inst/cyc</text>
+            <text x="340" y="185" text-anchor="middle" class="arch-sub">I-buffer IMAD <tspan id="arch-ibuffer-imad">4</tspan></text>
+
+            <rect x="450" y="130" width="170" height="70" rx="6" class="arch-box" />
+            <text x="535" y="152" text-anchor="middle" class="arch-title">SMSP 2</text>
+            <text x="535" y="170" text-anchor="middle" class="arch-value">issue: 1 warp inst/cyc</text>
+
+            <rect x="645" y="130" width="170" height="70" rx="6" class="arch-box" />
+            <text x="730" y="152" text-anchor="middle" class="arch-title">SMSP 3</text>
+            <text x="730" y="170" text-anchor="middle" class="arch-value">issue: 1 warp inst/cyc</text>
+          </g>
+
+          <text x="460" y="115" text-anchor="middle" class="arch-label" fill="var(--ink-3)">max issue = 4 warp inst/cyc/SM</text>
+
+          <!-- Backend execution pipes -->
+          <text x="460" y="230" text-anchor="middle" class="arch-title">Backend Execution Pipes (per SM)</text>
+
+          <rect x="40" y="250" width="190" height="110" rx="6" class="arch-pipe" />
+          <text x="135" y="270" text-anchor="middle" class="arch-title">FP32 Pipe</text>
+          <text x="135" y="290" text-anchor="middle" class="arch-value">FMA/ADD/MUL</text>
+          <text x="135" y="310" text-anchor="middle" class="arch-value">lat <tspan id="arch-fp32-lat">4.5</tspan> cyc</text>
+          <text x="135" y="330" text-anchor="middle" class="arch-value">thp <tspan id="arch-fp32-thp">—</tspan> inst/cyc</text>
+          <text x="135" y="350" text-anchor="middle" class="arch-sub">peak <tspan id="arch-fp32-peak">—</tspan> TFLOP/s</text>
+
+          <rect x="250" y="250" width="190" height="110" rx="6" class="arch-pipe" />
+          <text x="345" y="270" text-anchor="middle" class="arch-title">INT32 Pipe</text>
+          <text x="345" y="290" text-anchor="middle" class="arch-value">IADD3/LEA lat <tspan id="arch-int32-fast-lat">1.8</tspan></text>
+          <text x="345" y="310" text-anchor="middle" class="arch-value">IMAD/IDP4A lat <tspan id="arch-int32-slow-lat">4.5</tspan></text>
+          <text x="345" y="330" text-anchor="middle" class="arch-value">thp <tspan id="arch-int32-thp">—</tspan> inst/cyc</text>
+          <text x="345" y="350" text-anchor="middle" class="arch-sub">fast IADD3 <tspan id="arch-iadd3-thp">—</tspan></text>
+
+          <rect x="460" y="250" width="190" height="110" rx="6" class="arch-pipe" />
+          <text x="555" y="270" text-anchor="middle" class="arch-title">FP64 Pipe</text>
+          <text x="555" y="290" text-anchor="middle" class="arch-value">ADD/MUL/FMA</text>
+          <text x="555" y="310" text-anchor="middle" class="arch-value">lat <tspan id="arch-fp64-lat">62.9</tspan> cyc</text>
+          <text x="555" y="330" text-anchor="middle" class="arch-value">thp <tspan id="arch-fp64-thp">—</tspan> inst/cyc</text>
+          <text x="555" y="350" text-anchor="middle" class="arch-sub">DMMA lat <tspan id="arch-dmma-lat">558</tspan></text>
+
+          <rect x="670" y="250" width="190" height="110" rx="6" class="arch-pipe" />
+          <text x="765" y="270" text-anchor="middle" class="arch-title">SFU Pipe</text>
+          <text x="765" y="290" text-anchor="middle" class="arch-value">rsqrt/sin/cos/…</text>
+          <text x="765" y="310" text-anchor="middle" class="arch-value">lat <tspan id="arch-sfu-lat">18–46</tspan> cyc</text>
+          <text x="765" y="330" text-anchor="middle" class="arch-value">thp <tspan id="arch-sfu-thp">—</tspan> inst/cyc</text>
+
+          <rect x="145" y="380" width="190" height="100" rx="6" class="arch-pipe" />
+          <text x="240" y="400" text-anchor="middle" class="arch-title">Tensor Core</text>
+          <text x="240" y="420" text-anchor="middle" class="arch-value">MMA lat <tspan id="arch-tensor-lat">—</tspan> cyc</text>
+          <text x="240" y="440" text-anchor="middle" class="arch-value">FP16 thp <tspan id="arch-tensor-thp">—</tspan> TFLOP/s</text>
+          <text x="240" y="460" text-anchor="middle" class="arch-sub">MMA+FFMA overlap <tspan id="arch-tensor-overlap">—</tspan></text>
+
+          <rect x="365" y="380" width="190" height="100" rx="6" class="arch-pipe" />
+          <text x="460" y="400" text-anchor="middle" class="arch-title">Global Mem Pipe</text>
+          <text x="460" y="420" text-anchor="middle" class="arch-value">LDG thp <tspan id="arch-ldg-thp">—</tspan></text>
+          <text x="460" y="440" text-anchor="middle" class="arch-value">STS thp <tspan id="arch-sts-thp">—</tspan></text>
+          <text x="460" y="460" text-anchor="middle" class="arch-sub">DRAM lat <tspan id="arch-dram-lat">—</tspan> cyc</text>
+
+          <rect x="585" y="380" width="190" height="100" rx="6" class="arch-pipe" />
+          <text x="680" y="400" text-anchor="middle" class="arch-title">Shared / Atomic</text>
+          <text x="680" y="420" text-anchor="middle" class="arch-value">Shared lat <tspan id="arch-shared-lat">—</tspan> cyc</text>
+          <text x="680" y="440" text-anchor="middle" class="arch-value">Shared BW <tspan id="arch-shared-bw">—</tspan></text>
+          <text x="680" y="460" text-anchor="middle" class="arch-sub">Global atom lat <tspan id="arch-atom-lat">—</tspan></text>
+
+          <!-- Memory hierarchy -->
+          <text x="460" y="515" text-anchor="middle" class="arch-title">Memory Hierarchy</text>
+
+          <rect x="40" y="535" width="120" height="70" rx="6" class="arch-mem" />
+          <text x="100" y="555" text-anchor="middle" class="arch-title">Registers</text>
+          <text x="100" y="575" text-anchor="middle" class="arch-value">65536 / SM</text>
+          <text x="100" y="593" text-anchor="middle" class="arch-sub">~0 cyc</text>
+
+          <line x1="160" y1="570" x2="190" y2="570" class="arch-arrow" />
+          <rect x="190" y="535" width="120" height="70" rx="6" class="arch-mem" />
+          <text x="250" y="555" text-anchor="middle" class="arch-title">Shared</text>
+          <text x="250" y="575" text-anchor="middle" class="arch-value">100 KB / SM</text>
+          <text x="250" y="593" text-anchor="middle" class="arch-sub" id="arch-shared-box">lat — · BW —</text>
+
+          <line x1="310" y1="570" x2="340" y2="570" class="arch-arrow" />
+          <rect x="340" y="535" width="120" height="70" rx="6" class="arch-mem" />
+          <text x="400" y="555" text-anchor="middle" class="arch-title">L1 Cache</text>
+          <text x="400" y="575" text-anchor="middle" class="arch-value">~48 KB / SM</text>
+          <text x="400" y="593" text-anchor="middle" class="arch-sub" id="arch-l1-box">lat — · BW —</text>
+
+          <line x1="460" y1="570" x2="490" y2="570" class="arch-arrow" />
+          <rect x="490" y="535" width="120" height="70" rx="6" class="arch-mem" />
+          <text x="550" y="555" text-anchor="middle" class="arch-title">L2 Cache</text>
+          <text x="550" y="575" text-anchor="middle" class="arch-value">32 MB</text>
+          <text x="550" y="593" text-anchor="middle" class="arch-sub" id="arch-l2-box">lat — · BW —</text>
+
+          <line x1="610" y1="570" x2="640" y2="570" class="arch-arrow" />
+          <rect x="640" y="535" width="120" height="70" rx="6" class="arch-mem" />
+          <text x="700" y="555" text-anchor="middle" class="arch-title">HBM / DRAM</text>
+          <text x="700" y="575" text-anchor="middle" class="arch-value">16 GB</text>
+          <text x="700" y="593" text-anchor="middle" class="arch-sub" id="arch-hbm-box">lat — · BW —</text>
+
+          <line x1="760" y1="570" x2="790" y2="570" class="arch-arrow" />
+          <rect x="790" y="535" width="120" height="70" rx="6" class="arch-mem" />
+          <text x="850" y="555" text-anchor="middle" class="arch-title">PCIe</text>
+          <text x="850" y="575" text-anchor="middle" class="arch-value">Host</text>
+          <text x="850" y="593" text-anchor="middle" class="arch-sub" id="arch-pcie-box">BW —</text>
+
+          <!-- Footnote -->
+          <text x="460" y="650" text-anchor="middle" class="arch-sub">Measured on <tspan id="arch-device">—</tspan> · SM count <tspan id="arch-sm-count">—</tspan> · Core clock <tspan id="arch-clock">—</tspan> MHz</text>
+        </svg>
+      </section>
+
+      <section class="section-card" id="topology">
+        <h2>Topology</h2>
+        <p class="note">Device limits and on-chip resources reported by the CUDA driver and measured microbenchmarks.</p>
+        <table class="metric-table" id="topology-table"></table>
+      </section>
+
+      <section class="section-card" id="pipeline">
+        <h2>Pipeline Depth &amp; ILP</h2>
+        <p class="note">ILP sweep for FFMA and IADD3: latency at ILP=1 approximates pipeline depth; saturation reveals issue throughput.</p>
+        <table class="metric-table" id="pipeline-table"></table>
+      </section>
+
+      <section class="section-card" id="coissue">
+        <h2>Co-Issue</h2>
+        <p class="note">Wall-clock cycle measurement of FMA-only, IMAD-only, and interleaved FMA+IMAD dependent chains. The overlap ratio estimates independent pipe dispatch.</p>
+        <table class="metric-table" id="coissue-table"></table>
+      </section>
+
+      <section class="section-card" id="tma">
+        <h2>Tensor Memory Accelerator (TMA)</h2>
+        <p class="note">Latency of a 1D <code>cp.async.bulk.tensor</code> global-to-shared load (16-byte tile) measured with an mbarrier.</p>
+        <table class="metric-table" id="tma-table"></table>
+      </section>
+
+      <section class="section-card" id="clock">
+        <h2>Clock</h2>
+        <table class="metric-table" id="clock-table"></table>
+      </section>
+
+      <section class="section-card" id="memory">
+        <h2>Memory Hierarchy</h2>
+        <p class="note">Latencies are measured with dependency-chain or pointer-chase kernels; bandwidths use streaming copies.</p>
+        <table class="metric-table" id="memory-table"></table>
+      </section>
+
+      <section class="section-card" id="memory-more">
+        <h2>Memory Subsystem Probes</h2>
+        <p class="note">Cache-line detection, coalescing behavior, and async global-to-shared copy latency.</p>
+        <table class="metric-table" id="memory-more-table"></table>
+      </section>
+
+      <section class="section-card" id="instructions">
+        <h2>Instructions</h2>
+        <p class="note">Latency is the dependent-chain cost per instruction; throughput is the saturated chip-level rate.</p>
+        <table class="metric-table" id="instructions-table"></table>
+      </section>
+
+      <section class="section-card" id="more-instructions">
+        <h2>More Instructions</h2>
+        <p class="note">Logic, shift, permute, integer division, 64-bit integer, and type-conversion latencies.</p>
+        <table class="metric-table" id="more-instructions-table"></table>
+      </section>
+
+      <section class="section-card" id="instruction-throughput">
+        <h2>Instruction Throughput</h2>
+        <p class="note">Saturated instruction throughput per SM, measured with ILP=4 independent accumulators and reported in instructions per cycle.</p>
+        <table class="metric-table" id="instruction-throughput-table"></table>
+      </section>
+
+      <section class="section-card" id="tensor">
+        <h2>Tensor Core</h2>
+        <p class="note">MMA latency/throughput for various shapes and data types via inline PTX.</p>
+        <table class="metric-table" id="tensor-table"></table>
+      </section>
+
+      <section class="section-card" id="tensor-more">
+        <h2>Tensor Core More Shapes</h2>
+        <p class="note">Additional MMA shapes such as FP64 DMMA.</p>
+        <table class="metric-table" id="tensor-more-table"></table>
+      </section>
+
+      <section class="section-card" id="atomics">
+        <h2>Atomics</h2>
+        <table class="metric-table" id="atomics-table"></table>
+      </section>
+
+      <section class="section-card" id="barriers">
+        <h2>Barriers &amp; Synchronization</h2>
+        <table class="metric-table" id="barriers-table"></table>
+      </section>
+
+      <section class="section-card" id="shuffle">
+        <h2>Warp Shuffle</h2>
+        <table class="metric-table" id="shuffle-table"></table>
+      </section>
+
+      <section class="section-card" id="collectives">
+        <h2>Warp Collectives &amp; Divergence</h2>
+        <p class="note">Latency of warp-level collectives and cost of branch divergence.</p>
+        <table class="metric-table" id="collectives-table"></table>
+      </section>
+
+      <section class="section-card" id="pcie">
+        <h2>PCIe &amp; Kernel Launch</h2>
+        <table class="metric-table" id="pcie-table"></table>
+      </section>
+
+      <section class="section-card" id="cluster">
+        <h2>Thread-Block Cluster</h2>
+        <table class="metric-table" id="cluster-table"></table>
+      </section>
+
+      <footer class="page-footer" style="margin-top: 2rem;">
+        Generated by <code>cuda_micro_bench</code>. Run <code>./cuda_micro_bench --json</code> to refresh.
+      </footer>
+    </main>
+  </div>
+
+  <script>
+    const SECTIONS = {
+      topology: [
+        { key: ['results','topology','sm_count'], name: 'SM Count' },
+        { key: ['results','topology','smsps_per_sm'], name: 'SMSPs / SM' },
+        { key: ['results','topology','warps_per_smsp'], name: 'Warps / SMSP' },
+        { key: ['results','topology','warp_to_smsp_round_robin_ratio'], name: 'Warp-to-SMSP Ratio' },
+        { key: ['results','topology','warp_to_smsp_consistent'], name: 'Warp-to-SMSP Consistent' },
+        { key: ['results','topology','full_latency_hiding_warps'], name: 'Full Latency Hiding Warps' },
+        { key: ['results','topology','max_warps_per_sm'], name: 'Max Warps / SM' },
+        { key: ['results','topology','max_threads_per_sm'], name: 'Max Threads / SM' },
+        { key: ['results','topology','max_blocks_per_sm'], name: 'Max Blocks / SM' },
+        { key: ['results','topology','max_threads_per_block'], name: 'Max Threads / Block' },
+        { key: ['results','topology','registers_per_sm'], name: 'Registers / SM' },
+        { key: ['results','topology','shared_memory_per_sm_kb'], name: 'Shared Memory / SM' },
+        { key: ['results','topology','shared_memory_banks'], name: 'Shared Memory Banks' },
+        { key: ['results','topology','shared_memory_bank_width_bytes'], name: 'Shared Memory Bank Width' },
+        { key: ['results','topology','l2_cache_size_mb'], name: 'L2 Cache Size' },
+        { key: ['results','topology','gpc_count'], name: 'GPC Count' },
+        { key: ['results','topology','tpc_count'], name: 'TPC Count' },
+        { key: ['results','topology','l2_partition_count'], name: 'L2 Partition Count' },
+        { key: ['results','topology','memory_controller_count'], name: 'Memory Controller Count' },
+      ],
+      pipeline: [
+        { key: ['results','pipeline_depth','ffma_pipeline_depth_cycles'], name: 'FFMA Pipeline Depth' },
+        { key: ['results','pipeline_depth','ffma_ilp1_cyc_per_op'], name: 'FFMA ILP=1 Latency' },
+        { key: ['results','pipeline_depth','ffma_ilp4_cyc_per_op'], name: 'FFMA ILP=4 Throughput' },
+        { key: ['results','pipeline_depth','ffma_ilp16_cyc_per_op'], name: 'FFMA ILP=16 Throughput' },
+        { key: ['results','pipeline_depth','inferred_ibuffer_entries_ffma'], name: 'Inferred I-buffer Entries (FFMA)' },
+        { key: ['results','pipeline_depth','imad_pipeline_depth_cycles'], name: 'IMAD Pipeline Depth' },
+        { key: ['results','pipeline_depth','imad_ilp1_cyc_per_op'], name: 'IMAD ILP=1 Latency' },
+        { key: ['results','pipeline_depth','imad_ilp4_cyc_per_op'], name: 'IMAD ILP=4 Throughput' },
+        { key: ['results','pipeline_depth','imad_ilp16_cyc_per_op'], name: 'IMAD ILP=16 Throughput' },
+        { key: ['results','pipeline_depth','inferred_ibuffer_entries_imad'], name: 'Inferred I-buffer Entries (IMAD)' },
+      ],
+      coissue: [
+        { key: ['results','coissue','fma_only_cyc_per_op'], name: 'FMA Only cyc/op' },
+        { key: ['results','coissue','imad_only_cyc_per_op'], name: 'IMAD Only cyc/op' },
+        { key: ['results','coissue','fma_imad_mixed_cyc_per_pair'], name: 'FMA+IMAD Mixed cyc/pair' },
+        { key: ['results','coissue','fma_imad_overlap_ratio'], name: 'FMA+IMAD Overlap Ratio (latency)' },
+        { key: ['results','coissue','fma_only_throughput_ipc'], name: 'FMA Only Throughput' },
+        { key: ['results','coissue','imad_only_throughput_ipc'], name: 'IMAD Only Throughput' },
+        { key: ['results','coissue','fma_imad_mixed_total_throughput_ipc'], name: 'FMA+IMAD Mixed Total Throughput' },
+        { key: ['results','coissue','fma_imad_throughput_overlap_ratio'], name: 'FMA+IMAD Overlap Ratio (throughput)' },
+      ],
+      tma: [
+        { key: ['results','tma','tma_1d_load_latency_cyc'], name: 'TMA 1D 16B Load Latency' },
+      ],
+      clock: [
+        { key: ['results','clock','core_clock_mhz'], name: 'Core Clock' },
+        { key: ['results','clock','memory_clock_mhz'], name: 'Memory Clock' },
+      ],
+      memory: [
+        { key: ['results','memory','dram_read_bw_gbps'], name: 'DRAM Read Bandwidth' },
+        { key: ['results','memory','dram_latency_cyc'], name: 'DRAM Latency' },
+        { key: ['results','memory','l1_latency_cyc'], name: 'L1 Latency' },
+        { key: ['results','memory','l2_latency_cyc'], name: 'L2 Latency' },
+        { key: ['results','memory','shared_memory_latency_cyc'], name: 'Shared Memory Latency' },
+        { key: ['results','memory_shared','bandwidth_gibps'], name: 'Shared Memory Bandwidth' },
+        { key: ['results','memory_shared','bank_conflict_stride_1_cycles'], name: 'Smem Bank Conflict (stride 1)' },
+        { key: ['results','memory_shared','bank_conflict_stride_17_cycles'], name: 'Smem Bank Conflict (stride 17)' },
+        { key: ['results','memory_shared','bank_conflict_stride_32_cycles'], name: 'Smem Bank Conflict (stride 32)' },
+        { key: ['results','memory_cache','l1_chase_32_kb_cycles'], name: 'L1 Chase Probe (32 KB)' },
+        { key: ['results','memory_cache','l1_chase_128_kb_cycles'], name: 'L1 Chase Probe (128 KB)' },
+        { key: ['results','memory_cache','stride_128_bytes_cycles'], name: 'L2/DRAM Stride 128 B' },
+      ],
+      'memory-more': [
+        { key: ['results','memory_more','detected_cache_line_bytes'], name: 'Detected Cache Line' },
+        { key: ['results','memory_more','stride_latency_4_bytes_cyc'], name: 'Stride 4 B Latency' },
+        { key: ['results','memory_more','stride_latency_32_bytes_cyc'], name: 'Stride 32 B Latency' },
+        { key: ['results','memory_more','stride_latency_128_bytes_cyc'], name: 'Stride 128 B Latency' },
+        { key: ['results','memory_more','coalesce_stride_4_bytes_cyc'], name: 'Coalesce Stride 4 B' },
+        { key: ['results','memory_more','coalesce_stride_32_bytes_cyc'], name: 'Coalesce Stride 32 B' },
+        { key: ['results','memory_more','coalesce_stride_128_bytes_cyc'], name: 'Coalesce Stride 128 B' },
+        { key: ['results','memory_more','l1_per_warp_bw_bytes_per_cyc'], name: 'L1 Per-Warp BW (B/cyc)' },
+        { key: ['results','memory_more','l1_per_warp_bw_gibps'], name: 'L1 Per-Warp BW (GiB/s)' },
+        { key: ['results','memory_more','l2_aggregate_bw_gibps'], name: 'L2 Aggregate BW (GiB/s)' },
+        { key: ['results','memory_more','async_copy_16b_latency_cyc'], name: 'Async Copy 16 B Latency' },
+      ],
+      instructions: [
+        { key: ['results','instructions','fadd_latency_cyc'], name: 'FADD Latency' },
+        { key: ['results','instructions','ffma_latency_cyc'], name: 'FFMA Latency' },
+        { key: ['results','instructions','dfma_latency_cyc'], name: 'DFMA Latency' },
+        { key: ['results','instructions','mufu_rsq_latency_cyc'], name: 'MUFU RSQRT Latency' },
+        { key: ['results','instructions','sin_latency_cyc'], name: 'MUFU SIN Latency' },
+        { key: ['results','instructions','cos_latency_cyc'], name: 'MUFU COS Latency' },
+        { key: ['results','instructions','ex2_latency_cyc'], name: 'MUFU EX2 Latency' },
+        { key: ['results','instructions','lg2_latency_cyc'], name: 'MUFU LG2 Latency' },
+        { key: ['results','instructions','rcp_latency_cyc'], name: 'MUFU RCP Latency' },
+        { key: ['results','instructions','tanh_latency_cyc'], name: 'MUFU TANH Latency' },
+        { key: ['results','instructions','atoms_add_latency_cyc'], name: 'ATOMS.ADD Latency' },
+        { key: ['results','instructions','fp32_add_gflops'], name: 'FP32 ADD Throughput' },
+        { key: ['results','instructions','fp32_fma_gflops'], name: 'FP32 FMA Throughput' },
+        { key: ['results','instructions','int32_add_gops'], name: 'INT32 ADD Throughput' },
+        { key: ['results','instructions_extended','iadd3_latency_cycles'], name: 'IADD3 Latency' },
+        { key: ['results','instructions_extended','imad_latency_cycles'], name: 'IMAD Latency' },
+        { key: ['results','instructions_extended','lea_latency_cycles'], name: 'LEA Latency' },
+        { key: ['results','instructions_extended','idp4a_latency_cycles'], name: 'IDP4A Latency' },
+      ],
+      'more-instructions': [
+        { key: ['results','instructions_more','lop3_latency_cyc'], name: 'LOP3 Latency' },
+        { key: ['results','instructions_more','shl_const_latency_cyc'], name: 'SHL Const Latency' },
+        { key: ['results','instructions_more','shl_var_latency_cyc'], name: 'SHL Var Latency' },
+        { key: ['results','instructions_more','prmt_latency_cyc'], name: 'PRMT Latency' },
+        { key: ['results','instructions_more','div_u32_latency_cyc'], name: 'DIV.U32 Latency' },
+        { key: ['results','instructions_more','add_u64_latency_cyc'], name: 'ADD.U64 Latency' },
+        { key: ['results','instructions_more','mul_u64_latency_cyc'], name: 'MUL.U64 Latency' },
+        { key: ['results','instructions_more','cvt_f32_u32_latency_cyc'], name: 'CVT f32<->u32 Latency' },
+        { key: ['results','instructions_more','cvt_f32_s32_latency_cyc'], name: 'CVT f32<->s32 Latency' },
+        { key: ['results','instructions_more','cvt_f32_f64_latency_cyc'], name: 'CVT f32<->f64 Latency' },
+        { key: ['results','instructions_more','cvt_u64_u32_latency_cyc'], name: 'CVT u64<->u32 Latency' },
+        { key: ['results','instructions_more','vadd2_latency_cyc'], name: 'VADD2 Latency' },
+        { key: ['results','instructions_more','vadd4_latency_cyc'], name: 'VADD4 Latency' },
+        { key: ['results','instructions_more','fma_f16x2_latency_cyc'], name: 'FMA f16x2 Latency' },
+        { key: ['results','instructions_more','fma_bf16x2_latency_cyc'], name: 'FMA bf16x2 Latency' },
+        { key: ['results','instructions_more','fma_f32x2_latency_cyc'], name: 'FMA f32x2 Latency' },
+      ],
+      'instruction-throughput': [
+        { key: ['results','instructions','fp32_fma_throughput_ipc'], name: 'FP32 FMA' },
+        { key: ['results','instructions','fp32_add_throughput_ipc'], name: 'FP32 ADD' },
+        { key: ['results','instructions','fp32_mul_throughput_ipc'], name: 'FP32 MUL' },
+        { key: ['results','instructions','int32_add_throughput_ipc'], name: 'INT32 ADD' },
+        { key: ['results','instructions','int32_mul_throughput_ipc'], name: 'INT32 MUL' },
+        { key: ['results','instructions','fp64_add_throughput_ipc'], name: 'FP64 ADD' },
+        { key: ['results','instructions','rsqrt_throughput_ipc'], name: 'RSQRT' },
+        { key: ['results','instructions','sin_throughput_ipc'], name: 'SIN' },
+        { key: ['results','instructions','cos_throughput_ipc'], name: 'COS' },
+        { key: ['results','instructions','ex2_throughput_ipc'], name: 'EX2' },
+        { key: ['results','instructions','lg2_throughput_ipc'], name: 'LG2' },
+        { key: ['results','instructions','rcp_throughput_ipc'], name: 'RCP' },
+        { key: ['results','instructions','tanh_throughput_ipc'], name: 'TANH' },
+        { key: ['results','instructions','iadd3_throughput_ipc'], name: 'IADD3' },
+        { key: ['results','instructions','imad_throughput_ipc'], name: 'IMAD' },
+        { key: ['results','instructions','lea_throughput_ipc'], name: 'LEA' },
+        { key: ['results','instructions','idp4a_throughput_ipc'], name: 'IDP4A' },
+        { key: ['results','instructions','lop3_throughput_ipc'], name: 'LOP3' },
+        { key: ['results','instructions','shl_var_throughput_ipc'], name: 'SHL var' },
+        { key: ['results','instructions','prmt_throughput_ipc'], name: 'PRMT' },
+        { key: ['results','instructions','div_u32_throughput_ipc'], name: 'DIV u32' },
+        { key: ['results','instructions','add_u64_throughput_ipc'], name: 'ADD u64' },
+        { key: ['results','instructions','mul_u64_throughput_ipc'], name: 'MUL u64' },
+        { key: ['results','instructions','vadd2_throughput_ipc'], name: 'VADD2' },
+        { key: ['results','instructions','vadd4_throughput_ipc'], name: 'VADD4' },
+        { key: ['results','instructions','fma_f16x2_throughput_ipc'], name: 'FMA f16x2' },
+        { key: ['results','instructions','fma_bf16x2_throughput_ipc'], name: 'FMA bf16x2' },
+        { key: ['results','instructions','fma_f32x2_throughput_ipc'], name: 'FMA f32x2' },
+        { key: ['results','instructions','ldg_throughput_ipc'], name: 'LDG' },
+        { key: ['results','instructions','sts_throughput_ipc'], name: 'STS' },
+      ],
+      tensor: [
+        { key: ['results','instructions','hmma_16816_latency_cyc'], name: 'HMMA 16x8x16 (TF32) Latency' },
+        { key: ['results','tensor_core','mma_m16n8k8_throughput_tflops'], name: 'MMA m16n8k8 Throughput' },
+        { key: ['results','tensor_core_extended','fp16_m16n8k16_latency_cycles'], name: 'FP16 m16n8k16 Latency' },
+        { key: ['results','tensor_core_extended','fp16_m16n8k16_throughput_TFs'], name: 'FP16 m16n8k16 Throughput' },
+        { key: ['results','tensor_core_extended','bf16_m16n8k16_latency_cycles'], name: 'BF16 m16n8k16 Latency' },
+        { key: ['results','tensor_core_extended','fp8_m16n8k32_latency_cycles'], name: 'FP8 m16n8k32 Latency' },
+        { key: ['results','tensor_core_extended','int8_m16n8k32_latency_cycles'], name: 'INT8 m16n8k32 Latency' },
+      ],
+      'tensor-more': [
+        { key: ['results','tensor_core_more','dmma_m8n8k4_latency_cyc'], name: 'FP64 DMMA m8n8k4 Latency' },
+        { key: ['results','tensor_core_more','dmma_m8n8k4_latency_ns'], name: 'FP64 DMMA m8n8k4 Latency (ns)' },
+        { key: ['results','tensor_core_more','dmma_m8n8k4_throughput_tflops'], name: 'FP64 DMMA m8n8k4 Throughput' },
+        { key: ['results','tensor_core_more','mma_m16n8k4_tf32_latency_cyc'], name: 'TF32 MMA m16n8k4 Latency' },
+        { key: ['results','tensor_core_more','mma_m16n8k4_tf32_throughput_tflops'], name: 'TF32 MMA m16n8k4 Throughput' },
+        { key: ['results','tensor_core_more','mma_ffma_overlap_ratio'], name: 'MMA+FFMA Overlap Ratio' },
+        { key: ['results','tensor_core_more','wgmma_supported'], name: 'WGMMA Supported' },
+        { key: ['results','tensor_core_more','fp6_fp4_mma_supported'], name: 'FP6/FP4 MMA Supported' },
+      ],
+      atomics: [
+        { key: ['results','atomics','global_atomic_add_latency_cyc'], name: 'Global atomicAdd Latency' },
+        { key: ['results','atomics','global_atomic_add_gops'], name: 'Global atomicAdd Throughput' },
+        { key: ['results','atomics','shared_atomic_add_gops'], name: 'Shared atomicAdd Throughput' },
+        { key: ['results','atomics','global_atomic_cas_latency_cyc'], name: 'Global atomicCAS Latency' },
+        { key: ['results','atomics','global_atomic_exch_latency_cyc'], name: 'Global atomicExch Latency' },
+        { key: ['results','atomics','global_atomic_min_latency_cyc'], name: 'Global atomicMin Latency' },
+        { key: ['results','atomics','global_atomic_max_latency_cyc'], name: 'Global atomicMax Latency' },
+        { key: ['results','atomics','block_reduce_latency_cyc'], name: 'Block Reduce Latency' },
+      ],
+      barriers: [
+        { key: ['results','barriers','syncthreads_1warp_cycles'], name: '__syncthreads() 1-warp Latency' },
+        { key: ['results','barriers','syncthreads_full_cycles'], name: '__syncthreads() Full Block Latency' },
+        { key: ['results','barriers','named_barrier_cycles'], name: 'bar.sync 1 Latency' },
+        { key: ['results','barriers','mbarrier_cycles'], name: 'mbarrier Arrive+Wait Latency' },
+        { key: ['results','barriers','syncwarp_cycles'], name: '__syncwarp() Latency' },
+        { key: ['results','barriers','fence_cta_cycles'], name: 'fence.acq_rel.cta Latency' },
+        { key: ['results','barriers','fence_gpu_cycles'], name: 'fence.acq_rel.gpu Latency' },
+        { key: ['results','barriers','fence_sys_cycles'], name: 'fence.acq_rel.sys Latency' },
+      ],
+      shuffle: [
+        { key: ['results','warp_shuffle','shfl_idx_latency_cycles'], name: 'SHFL.SYNC.IDX Latency' },
+        { key: ['results','warp_shuffle','shfl_idx_throughput_Ginst_s'], name: 'SHFL.SYNC.IDX Throughput' },
+      ],
+      collectives: [
+        { key: ['results','warp_collectives','vote_ballot_latency_cycles'], name: 'vote.ballot.sync Latency' },
+        { key: ['results','warp_collectives','elect_sync_latency_cycles'], name: 'elect.sync Latency' },
+        { key: ['results','warp_collectives','redux_add_latency_cycles'], name: 'redux.sync.add Latency' },
+        { key: ['results','warp_collectives','branch_cold_cyc_per_iter'], name: 'Branch Cold' },
+        { key: ['results','warp_collectives','branch_warm_cyc_per_iter'], name: 'Branch Warm' },
+        { key: ['results','warp_collectives','pred_split_25_cyc_per_iter'], name: 'Predicated 25% Active' },
+        { key: ['results','warp_collectives','pred_split_50_cyc_per_iter'], name: 'Predicated 50% Active' },
+        { key: ['results','warp_collectives','pred_split_75_cyc_per_iter'], name: 'Predicated 75% Active' },
+        { key: ['results','warp_collectives','divergence_uniform_cyc_per_iter'], name: 'Divergence: Uniform' },
+        { key: ['results','warp_collectives','divergence_2way_cyc_per_iter'], name: 'Divergence: 2-way' },
+        { key: ['results','warp_collectives','divergence_4way_cyc_per_iter'], name: 'Divergence: 4-way' },
+        { key: ['results','warp_collectives','divergence_8way_cyc_per_iter'], name: 'Divergence: 8-way' },
+        { key: ['results','warp_collectives','divergence_16way_cyc_per_iter'], name: 'Divergence: 16-way' },
+        { key: ['results','warp_collectives','divergence_32way_cyc_per_iter'], name: 'Divergence: 32-way' },
+        { key: ['results','warp_collectives','ffma_ipc_w1'], name: 'FFMA IPC W=1' },
+        { key: ['results','warp_collectives','ffma_ipc_w16'], name: 'FFMA IPC W=16' },
+        { key: ['results','warp_collectives','iadd3_ipc_w1'], name: 'IADD3 IPC W=1' },
+        { key: ['results','warp_collectives','iadd3_ipc_w16'], name: 'IADD3 IPC W=16' },
+      ],
+      pcie: [
+        { key: ['results','pcie','htod_bandwidth_GiB_s'], name: 'HtoD Pinned Bandwidth' },
+        { key: ['results','pcie','dtoh_bandwidth_GiB_s'], name: 'DtoH Pinned Bandwidth' },
+        { key: ['results','pcie','kernel_launch_warm_us'], name: 'Kernel Launch Latency (warm)' },
+        { key: ['results','pcie','kernel_launch_cold_us'], name: 'Kernel Launch Latency (cold)' },
+        { key: ['results','pcie','device_count'], name: 'GPU Device Count' },
+        { key: ['results','pcie','p2p_available'], name: 'P2P Available' },
+        { key: ['results','pcie','um_page_fault_latency_us'], name: 'Unified Memory First-Touch Latency' },
+      ],
+      cluster: [
+        { key: ['results','cluster','max_cluster_size'], name: 'Max Cluster Size' },
+        { key: ['results','cluster','launch_test_size'], name: 'Launch Test Size' },
+        { key: ['results','cluster','cluster_barrier_2block_cyc'], name: 'Cluster Barrier Latency (2-block)' },
+        { key: ['results','cluster','cluster_barrier_max_cyc'], name: 'Cluster Barrier Latency (max)' },
+      ],
+    };
+
+    function getPath(obj, path) {
+      let cur = obj;
+      for (const p of path) {
+        if (cur == null || typeof cur !== 'object') return undefined;
+        cur = cur[p];
+      }
+      return cur;
+    }
+
+    function fmt(num) {
+      if (num === undefined || num === null || Number.isNaN(num)) return '—';
+      if (Math.abs(num) >= 10000) return num.toFixed(1);
+      if (Math.abs(num) >= 100) return num.toFixed(2);
+      if (Math.abs(num) >= 1) return num.toFixed(3);
+      return num.toFixed(4);
+    }
+
+    function v(data, path) {
+      const entry = getPath(data, path);
+      return entry && typeof entry === 'object' ? entry.value : entry;
+    }
+
+    function setText(id, text) {
+      const el = document.getElementById(id);
+      if (el) el.textContent = text;
+    }
+
+    function renderArchDiagram(data) {
+      setText('arch-device', data.device || 'Unknown');
+      setText('arch-sm-count', data.sm_count || '?');
+      setText('arch-clock', fmt((data.clock_khz || 0) / 1000));
+
+      setText('arch-warps-per-smsp', fmt(v(data, ['results','topology','warps_per_smsp'])));
+      setText('arch-ibuffer-ffma', fmt(v(data, ['results','pipeline_depth','inferred_ibuffer_entries_ffma'])));
+      setText('arch-ibuffer-imad', fmt(v(data, ['results','pipeline_depth','inferred_ibuffer_entries_imad'])));
+
+      setText('arch-fp32-lat', fmt(v(data, ['results','instructions','ffma_latency_cyc'])));
+      setText('arch-fp32-thp', fmt(v(data, ['results','instructions','fp32_fma_throughput_ipc'])));
+      setText('arch-fp32-peak', fmt(v(data, ['results','peak','fp32_tflops'])));
+
+      setText('arch-int32-fast-lat', fmt(v(data, ['results','instructions_extended','iadd3_latency_cycles'])));
+      setText('arch-int32-slow-lat', fmt(v(data, ['results','instructions_extended','imad_latency_cycles'])));
+      setText('arch-int32-thp', fmt(v(data, ['results','instructions','int32_add_throughput_ipc'])));
+      setText('arch-iadd3-thp', fmt(v(data, ['results','instructions','iadd3_throughput_ipc'])));
+
+      setText('arch-fp64-lat', fmt(v(data, ['results','instructions','fp64_add_latency_cyc'])));
+      setText('arch-fp64-thp', fmt(v(data, ['results','instructions','fp64_add_throughput_ipc'])));
+      setText('arch-dmma-lat', fmt(v(data, ['results','tensor_core_more','dmma_m8n8k4_latency_cyc'])));
+
+      const sfuLats = [
+        v(data, ['results','instructions','rsqrt_latency_cyc']),
+        v(data, ['results','instructions','sin_latency_cyc']),
+        v(data, ['results','instructions','rcp_latency_cyc']),
+        v(data, ['results','instructions','tanh_latency_cyc']),
+      ].filter(x => x !== undefined && !Number.isNaN(x));
+      if (sfuLats.length) {
+        const mn = Math.min(...sfuLats), mx = Math.max(...sfuLats);
+        setText('arch-sfu-lat', (mn === mx ? fmt(mn) : fmt(mn) + '–' + fmt(mx)));
+      }
+      setText('arch-sfu-thp', fmt(v(data, ['results','instructions','rsqrt_throughput_ipc'])));
+
+      setText('arch-tensor-lat', fmt(v(data, ['results','tensor_core_extended','fp16_m16n8k16_latency_cycles'])));
+      setText('arch-tensor-thp', fmt(v(data, ['results','tensor_core_extended','fp16_m16n8k16_throughput_TFs'])));
+      setText('arch-tensor-overlap', fmt(v(data, ['results','tensor_core_more','mma_ffma_overlap_ratio'])));
+
+      setText('arch-ldg-thp', fmt(v(data, ['results','instructions','ldg_throughput_ipc'])));
+      setText('arch-sts-thp', fmt(v(data, ['results','instructions','sts_throughput_ipc'])));
+      setText('arch-dram-lat', fmt(v(data, ['results','memory','dram_latency_cyc'])));
+
+      const sharedLat = v(data, ['results','memory','shared_memory_latency_cyc']);
+      const sharedBw = v(data, ['results','memory_shared','bandwidth_gibps']);
+      setText('arch-shared-lat', fmt(sharedLat));
+      setText('arch-shared-bw', fmt(sharedBw) + ' GiB/s');
+      setText('arch-shared-box', 'lat ' + fmt(sharedLat) + ' cyc · ' + fmt(sharedBw) + ' GiB/s');
+
+      const l1Lat = v(data, ['results','memory','l1_latency_cyc']);
+      const l1Bw = v(data, ['results','memory_more','l1_per_warp_bw_gibps']);
+      setText('arch-l1-box', 'lat ' + fmt(l1Lat) + ' cyc · ' + fmt(l1Bw) + ' GiB/s/warp');
+
+      const l2Lat = v(data, ['results','memory','l2_latency_cyc']);
+      const l2Bw = v(data, ['results','memory_more','l2_aggregate_bw_gibps']);
+      setText('arch-l2-box', 'lat ' + fmt(l2Lat) + ' cyc · ' + fmt(l2Bw) + ' GiB/s');
+
+      const dramLat = v(data, ['results','memory','dram_latency_cyc']);
+      const dramBw = v(data, ['results','memory_dram','copy_max_bw_gibps']);
+      setText('arch-hbm-box', 'lat ' + fmt(dramLat) + ' cyc · ' + fmt(dramBw) + ' GiB/s');
+
+      const pcieBw = v(data, ['results','pcie','htod_bandwidth_GiB_s']);
+      setText('arch-pcie-box', 'BW ' + fmt(pcieBw) + ' GiB/s');
+
+      setText('arch-atom-lat', fmt(v(data, ['results','atomics','global_atomic_add_latency_cyc'])));
+    }
+
+    function renderHero(data) {
+      const meta = document.getElementById('hero-meta');
+      const items = [
+        { lbl: 'Device', val: data.device || 'Unknown' },
+        { lbl: 'Architecture', val: data.architecture || 'Unknown' },
+        { lbl: 'SM Count', val: (data.sm_count || '?') + '<small>enabled</small>' },
+        { lbl: 'Core Clock', val: fmt((data.clock_khz || 0) / 1000) + '<small>MHz</small>' },
+        { lbl: 'Memory Bus', val: (data.memory_bus_width_bits || '?') + '<small>bit</small>' },
+        { lbl: 'Memory Clock', val: fmt((data.memory_clock_khz || 0) / 1000) + '<small>MHz</small>' },
+      ];
+      meta.innerHTML = items.map(i => `
+        <div class="meta-cell"><div class="lbl">${i.lbl}</div><div class="val">${i.val}</div></div>
+      `).join('');
+    }
+
+    function renderTable(tableId, metrics, data) {
+      const table = document.getElementById(tableId);
+      let html = '<thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody>';
+      for (const m of metrics) {
+        const entry = getPath(data, m.key);
+        const val = entry && typeof entry === 'object' ? entry.value : entry;
+        const unit = entry && typeof entry === 'object' ? entry.unit : '';
+        html += `<tr>
+          <td class="metric-name">${m.name}</td>
+          <td class="value-mono">${fmt(val)} <span class="unit">${unit}</span></td>
+        </tr>`;
+      }
+      html += '</tbody>';
+      table.innerHTML = html;
+    }
+
+    async function load() {
+      const status = document.getElementById('status');
+      try {
+        const res = await fetch('results.json');
+        if (!res.ok) throw new Error(`Could not load results.json (${res.status})`);
+        const data = await res.json();
+        renderHero(data);
+        renderArchDiagram(data);
+        for (const [section, metrics] of Object.entries(SECTIONS)) {
+          renderTable(section + '-table', metrics, data);
+        }
+      } catch (err) {
+        status.innerHTML = `<div class="error">Error loading report data: ${err.message}</div>`;
+        console.error(err);
+      }
+    }
+
+    load();
+  </script>
+</body>
+</html>
