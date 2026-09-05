@@ -224,8 +224,11 @@
 
       <section class="section-card" id="tma">
         <h2>Tensor Memory Accelerator (TMA)</h2>
-        <p class="note">Latency of a 1D <code>cp.async.bulk.tensor</code> global-to-shared load (16-byte tile) measured with an mbarrier.</p>
+        <p class="note">Latency of a 1D <code>cp.async.bulk.tensor</code> global-to-shared load (16-byte tile) measured with an mbarrier, and global-to-shared bulk-copy bandwidth via <code>cuda::device::memcpy_async_tx</code>.</p>
         <table class="metric-table" id="tma-table"></table>
+        <h3 style="margin: 1.25rem 0 0.5rem; font-size: 1rem; color: var(--ink);">TMA vs LSU (load/store path)</h3>
+        <p class="note">Same DRAM, two engines. LSU bandwidth is a stream copy counting read+write traffic; TMA bandwidth counts read-only bulk copies into shared memory. LSU latency is a 4-byte pointer chase; TMA latency is a 16-byte tile load into shared memory.</p>
+        <table class="metric-table" id="tma-lsu-table"></table>
       </section>
 
       <section class="section-card" id="clock">
@@ -359,6 +362,7 @@
       ],
       tma: [
         { key: ['results','tma','tma_1d_load_latency_cyc'], name: 'TMA 1D 16B Load Latency' },
+        { key: ['results','tma','tma_g2s_load_bw_gibps'], name: 'TMA G2S Bulk-Copy Bandwidth' },
       ],
       clock: [
         { key: ['results','clock','core_clock_mhz'], name: 'Core Clock' },
@@ -541,6 +545,23 @@
       ],
     };
 
+    // TMA vs LSU comparison rows. Key arrays use the same shape as SECTIONS
+    // so tools/validate_report.py covers them.
+    const TMA_LSU_COMPARE = [
+      {
+        name: 'DRAM Bandwidth (GiB/s)',
+        lsu: { key: ['results','memory_dram','copy_max_bw_gibps'], label: 'stream copy, r+w counted' },
+        tma: { key: ['results','tma','tma_g2s_load_bw_gibps'], label: 'bulk copy G2S, read only' },
+        higherBetter: true,
+      },
+      {
+        name: 'DRAM Load Latency (cycles)',
+        lsu: { key: ['results','memory','dram_latency_cyc'], label: 'pointer chase 4B' },
+        tma: { key: ['results','tma','tma_1d_load_latency_cyc'], label: '1D tile 16B + mbarrier' },
+        higherBetter: false,
+      },
+    ];
+
     function getPath(obj, path) {
       let cur = obj;
       for (const p of path) {
@@ -665,6 +686,27 @@
       table.innerHTML = html;
     }
 
+    function renderTmaLsuTable(data) {
+      const table = document.getElementById('tma-lsu-table');
+      let html = '<thead><tr><th>Metric</th><th>LSU (LDG/STG path)</th><th>TMA (bulk engine)</th><th>TMA / LSU</th></tr></thead><tbody>';
+      for (const row of TMA_LSU_COMPARE) {
+        const lv = v(data, row.lsu.key);
+        const tv = v(data, row.tma.key);
+        let ratio = '—';
+        if (lv !== undefined && tv !== undefined && lv !== 0 && !Number.isNaN(lv) && !Number.isNaN(tv)) {
+          ratio = (tv / lv).toFixed(2) + '×';
+        }
+        html += `<tr>
+          <td class="metric-name">${row.name}</td>
+          <td class="value-mono">${fmt(lv)}<br><span class="unit">${row.lsu.label}</span></td>
+          <td class="value-mono">${fmt(tv)}<br><span class="unit">${row.tma.label}</span></td>
+          <td class="value-mono">${ratio}</td>
+        </tr>`;
+      }
+      html += '</tbody>';
+      table.innerHTML = html;
+    }
+
     async function load() {
       const status = document.getElementById('status');
       try {
@@ -676,6 +718,7 @@
         for (const [section, metrics] of Object.entries(SECTIONS)) {
           renderTable(section + '-table', metrics, data);
         }
+        renderTmaLsuTable(data);
       } catch (err) {
         status.innerHTML = `<div class="error">Error loading report data: ${err.message}</div>`;
         console.error(err);
