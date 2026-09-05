@@ -71,6 +71,83 @@ __global__ void kernel_tma_1d_latency(const __grid_constant__ CUtensorMap tmap,
   if ((int)smem_buf[0] == 0xdeadbeef) out_cycles[1] = 0;
 }
 
+// TMA global->shared bulk-copy bandwidth configuration.
+constexpr int kTmaStages = 4;               // pipeline depth (mbarriers)
+constexpr size_t kTmaChunkBytes = 16 << 10; // 16 KiB per cp.async.bulk op
+
+extern __shared__ char smem_raw[];
+
+// Waits on an mbarrier phase. The predicate register is scoped in braces so
+// the block can be inlined multiple times in one kernel.
+#define CMB_MBAR_WAIT(mbar_addr, parity)                                       \
+  do {                                                                         \
+    unsigned int ready_ = 0;                                                   \
+    do {                                                                       \
+      asm volatile(                                                            \
+          "{\n\t"                                                              \
+          ".reg .pred p;\n\t"                                                  \
+          "mbarrier.try_wait.parity.acquire.cta.shared.b64 p, [%1], %2;\n\t"   \
+          "selp.b32 %0, 1, 0, p;\n\t"                                          \
+          "}"                                                                  \
+          : "=r"(ready_)                                                       \
+          : "r"(mbar_addr), "r"(parity));                                      \
+    } while (!ready_);                                                         \
+  } while (0)
+
+// G2S TMA bandwidth kernel: each CTA streams a contiguous slice of global
+// memory through kTmaStages shared-memory buffers with cp.async.bulk. A
+// single thread drives the pipeline; throughput is timed host-side.
+__global__ void kernel_tma_g2s_bandwidth(const char *gmem, size_t slice_bytes,
+                                         int chunks_per_block,
+                                         unsigned int *sink) {
+  __shared__ alignas(8) uint64_t mbar[kTmaStages];
+  uint32_t smem_base = (uint32_t)__cvta_generic_to_shared(smem_raw);
+
+  if (threadIdx.x == 0) {
+    for (int s = 0; s < kTmaStages; ++s) {
+      uint32_t mbar_addr = (uint32_t)__cvta_generic_to_shared(&mbar[s]);
+      asm volatile("mbarrier.init.shared.b64 [%0], %1;" ::"r"(mbar_addr), "r"(1));
+    }
+    // Make the initialized mbarriers visible to the async/TMA proxy.
+    asm volatile("fence.proxy.async.shared::cta;" ::: "memory");
+  }
+  __syncthreads();
+
+  if (threadIdx.x == 0) {
+    const char *src = gmem + (size_t)blockIdx.x * slice_bytes;
+    for (int c = 0; c < chunks_per_block; ++c) {
+      int stage = c % kTmaStages;
+      uint32_t mbar_addr = (uint32_t)__cvta_generic_to_shared(&mbar[stage]);
+      if (c >= kTmaStages) {
+        // Reusing a stage: wait for its previous transfer to complete.
+        CMB_MBAR_WAIT(mbar_addr, (unsigned int)(((c / kTmaStages) - 1) & 1));
+      }
+      uint32_t dst = smem_base + (uint32_t)(stage * kTmaChunkBytes);
+      asm volatile(
+          "cp.async.bulk.shared::cluster.global.mbarrier::complete_tx::bytes [%0], [%1], %2, [%3];" ::"r"(dst),
+          "l"(src + (size_t)c * kTmaChunkBytes),
+          "r"((unsigned int)kTmaChunkBytes),
+          "r"(mbar_addr)
+          : "memory");
+      // arrive and tell the mbarrier how many bytes the TMA will transfer
+      uint64_t token __attribute__((unused));
+      asm volatile("mbarrier.arrive.expect_tx.release.cta.shared.b64 %0, [%1], %2;"
+                   : "=l"(token)
+                   : "r"(mbar_addr), "r"((unsigned int)kTmaChunkBytes));
+    }
+    // Drain the last in-flight stages before the block exits.
+    int first = chunks_per_block >= kTmaStages ? chunks_per_block - kTmaStages : 0;
+    for (int c = first; c < chunks_per_block; ++c) {
+      int stage = c % kTmaStages;
+      uint32_t mbar_addr = (uint32_t)__cvta_generic_to_shared(&mbar[stage]);
+      CMB_MBAR_WAIT(mbar_addr, (unsigned int)((c / kTmaStages) & 1));
+    }
+  }
+  __syncthreads();
+  // keep smem references alive
+  if ((int)smem_raw[0] == 0xdeadbeef) sink[blockIdx.x] = 0;
+}
+
 static bool encode_1d_tensor_map(void *d_buf,
                                  size_t nbytes,
                                  CUtensorMap *h_tmap) {
@@ -114,6 +191,7 @@ void benchmark_tma() {
   if (cc_major < 9) {
     printf("  TMA requires SM >= 9.0 (current %d.%d), skipping.\n", cc_major, cc_minor);
     g_results.log("tma", "tma_1d_load_latency_cyc", 0.0, "cycles");
+    g_results.log("tma", "tma_g2s_load_bw_gibps", 0.0, "GiB/s");
     return;
   }
 
@@ -123,6 +201,7 @@ void benchmark_tma() {
     cuGetErrorString(drv_res, &errstr);
     printf("  cuInit failed: %s\n", errstr ? errstr : "unknown");
     g_results.log("tma", "tma_1d_load_latency_cyc", 0.0, "cycles");
+    g_results.log("tma", "tma_g2s_load_bw_gibps", 0.0, "GiB/s");
     return;
   }
 
@@ -159,6 +238,57 @@ void benchmark_tma() {
 
   CUDA_CHECK(cudaFree(d_cycles));
   CUDA_CHECK(cudaFree(d_buf));
+
+  // --- TMA global->shared bulk-copy bandwidth ---
+  // Each CTA streams a contiguous slice of a large buffer into shared memory
+  // with pipelined cp.async.bulk ops; throughput is timed host-side.
+  double bw_gib = 0.0;
+  {
+    DeviceInfo info = queryDevice(0);
+    size_t bytes = 256ull << 20;
+    if (bytes > info.total_global_mem / 4)
+      bytes = info.total_global_mem / 4;
+    int blocks = info.sm_count * 8;
+    size_t slice = (bytes / (size_t)blocks) / kTmaChunkBytes * kTmaChunkBytes;
+    int smem_bytes = (int)(kTmaStages * kTmaChunkBytes);
+
+    if (slice >= (size_t)kTmaStages * kTmaChunkBytes) {
+      size_t total = slice * (size_t)blocks;
+      char *d_src = nullptr;
+      unsigned int *d_sink = nullptr;
+      CUDA_CHECK(cudaMalloc(&d_src, total));
+      CUDA_CHECK(cudaMemset(d_src, 1, total));
+      CUDA_CHECK(cudaMalloc(&d_sink, blocks * sizeof(unsigned int)));
+      CUDA_CHECK(cudaFuncSetAttribute(kernel_tma_g2s_bandwidth,
+                                      cudaFuncAttributeMaxDynamicSharedMemorySize,
+                                      smem_bytes));
+
+      int chunks = (int)(slice / kTmaChunkBytes);
+      // Warm-up launch and sync.
+      kernel_tma_g2s_bandwidth<<<blocks, 32, smem_bytes>>>(d_src, slice, chunks, d_sink);
+      CUDA_CHECK(cudaGetLastError());
+      CUDA_CHECK(cudaDeviceSynchronize());
+
+      GpuTimer timer;
+      timer.start();
+      kernel_tma_g2s_bandwidth<<<blocks, 32, smem_bytes>>>(d_src, slice, chunks, d_sink);
+      timer.stop();
+      CUDA_CHECK(cudaGetLastError());
+      CUDA_CHECK(cudaDeviceSynchronize());
+      float ms = timer.elapsedMs();
+
+      bw_gib = bandwidthGiB((double)total, ms * 1e6);
+      printf("  TMA G2S bulk-copy BW: %.2f GiB/s (%.1f MB in %.3f ms, %d blocks x %d x %zu KiB)\n",
+             bw_gib, (double)total / (1 << 20), ms, blocks, chunks,
+             kTmaChunkBytes >> 10);
+
+      CUDA_CHECK(cudaFree(d_sink));
+      CUDA_CHECK(cudaFree(d_src));
+    } else {
+      printf("  Not enough global memory for TMA bandwidth test, skipping.\n");
+    }
+  }
+  g_results.log("tma", "tma_g2s_load_bw_gibps", bw_gib, "GiB/s");
 }
 
 } // namespace cmb

@@ -98,7 +98,7 @@ The reference repo [zartbot/micro_arch](https://github.com/zartbot/micro_arch.gi
 - PCIe / kernel launch latency
 - Occupancy and cluster basics
 
-Items not yet implemented include TMA engine characterization, multi-GPU P2P, fine-grained power/thermal profiling, and full instruction-encoding coverage. The JSON/HTML framework is designed to be extended as more tests are added.
+Items not yet implemented include multi-GPU P2P, fine-grained power/thermal profiling, and full instruction-encoding coverage. The JSON/HTML framework is designed to be extended as more tests are added.
 
 ## Methodology
 

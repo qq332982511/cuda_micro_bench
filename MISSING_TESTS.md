@@ -55,7 +55,7 @@
 | 2.10 | Shared memory bandwidth | :white_check_mark: | `memory_shared.bandwidth_gibps` |
 | 2.11 | Bank conflict (stride 1/17/32) | :white_check_mark: | `memory_shared.bank_conflict_stride_*` |
 | 2.12 | Coalescing behavior | :white_check_mark: | `memory_more.coalesce_stride_*` |
-| 2.13 | TMA latency / throughput | :white_check_mark: | `tma.tma_1d_load_latency_cyc` |
+| 2.13 | TMA latency / throughput | :white_check_mark: | `tma.tma_1d_load_latency_cyc`, `tma.tma_g2s_load_bw_gibps` |
 | 2.14 | `cp.async` 异步拷贝 latency | :white_check_mark: | `memory_more.async_copy_16b_latency_cyc` |
 | 2.15 | DSMEM read latency | :x: | 本卡 cluster DSMEM 远程访问报 `unspecified launch failure`，已优雅跳过 |
 
@@ -159,7 +159,7 @@
 - `src/warp_collectives.cu` — `vote.ballot.sync`、`elect.sync`、`redux.sync.add`、divergence、branch warm/cold、predicated divergence、IPC vs warps。
 - `src/memory_more.cu` — cache-line、coalescing、async copy 16 B、L1 per-warp BW、L2 aggregate BW。
 - `src/coissue.cu` — FMA+IMAD pipe-to-pipe co-issue overlap。
-- `src/tma.cu` — `cp.async.bulk.tensor` 1D 16 B load latency（mbarrier + `__grid_constant__`）。
+- `src/tma.cu` — `cp.async.bulk.tensor` 1D 16 B load latency（mbarrier + `__grid_constant__`）；`cp.async.bulk` G2S bulk-copy 带宽（16 KiB × 4 级流水，host 侧计时）。
 - `src/atomics.cu` — `atomicAdd` throughput/latency、`atomicCAS/Exch/Min/Max` latency、block reduce。
 - `src/barriers.cu` — `__syncthreads`、`bar.sync`、`mbarrier`、fence latencies。
 - `src/cluster.cu` — cluster launch 与 cluster barrier latency。
