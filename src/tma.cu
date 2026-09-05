@@ -2,9 +2,12 @@
 #include "timer.h"
 #include "utils.h"
 #include <cuda.h>
+#include <cuda/barrier>
+#include <cuda/ptx>
 #include <cuda_runtime.h>
 #include <cstdio>
 #include <cstring>
+#include <utility>
 
 namespace cmb {
 
@@ -72,76 +75,51 @@ __global__ void kernel_tma_1d_latency(const __grid_constant__ CUtensorMap tmap,
 }
 
 // TMA global->shared bulk-copy bandwidth configuration.
-constexpr int kTmaStages = 4;               // pipeline depth (mbarriers)
-constexpr size_t kTmaChunkBytes = 16 << 10; // 16 KiB per cp.async.bulk op
+constexpr int kTmaStages = 4;               // pipeline depth (barriers)
+constexpr size_t kTmaChunkBytes = 16 << 10; // 16 KiB per TMA transfer
+
+using tma_barrier = cuda::barrier<cuda::thread_scope_block>;
 
 extern __shared__ char smem_raw[];
 
-// Waits on an mbarrier phase. The predicate register is scoped in braces so
-// the block can be inlined multiple times in one kernel.
-#define CMB_MBAR_WAIT(mbar_addr, parity)                                       \
-  do {                                                                         \
-    unsigned int ready_ = 0;                                                   \
-    do {                                                                       \
-      asm volatile(                                                            \
-          "{\n\t"                                                              \
-          ".reg .pred p;\n\t"                                                  \
-          "mbarrier.try_wait.parity.acquire.cta.shared.b64 p, [%1], %2;\n\t"   \
-          "selp.b32 %0, 1, 0, p;\n\t"                                          \
-          "}"                                                                  \
-          : "=r"(ready_)                                                       \
-          : "r"(mbar_addr), "r"(parity));                                      \
-    } while (!ready_);                                                         \
-  } while (0)
-
 // G2S TMA bandwidth kernel: each CTA streams a contiguous slice of global
-// memory through kTmaStages shared-memory buffers with cp.async.bulk. A
-// single thread drives the pipeline; throughput is timed host-side.
+// memory through kTmaStages shared-memory buffers using the CUDA C++ TMA
+// interface (cuda::device::memcpy_async_tx + transaction barriers). A single
+// thread drives the pipeline; throughput is timed host-side.
 __global__ void kernel_tma_g2s_bandwidth(const char *gmem, size_t slice_bytes,
                                          int chunks_per_block,
                                          unsigned int *sink) {
-  __shared__ alignas(8) uint64_t mbar[kTmaStages];
-  uint32_t smem_base = (uint32_t)__cvta_generic_to_shared(smem_raw);
+#pragma nv_diag_suppress static_var_with_dynamic_init
+  __shared__ tma_barrier bar[kTmaStages];
 
   if (threadIdx.x == 0) {
-    for (int s = 0; s < kTmaStages; ++s) {
-      uint32_t mbar_addr = (uint32_t)__cvta_generic_to_shared(&mbar[s]);
-      asm volatile("mbarrier.init.shared.b64 [%0], %1;" ::"r"(mbar_addr), "r"(1));
-    }
-    // Make the initialized mbarriers visible to the async/TMA proxy.
-    asm volatile("fence.proxy.async.shared::cta;" ::: "memory");
+    for (int s = 0; s < kTmaStages; ++s)
+      init(&bar[s], 1); // only this thread arrives on each barrier
+    // Make the initialized barriers visible to the async/TMA proxy.
+    cuda::ptx::fence_proxy_async(cuda::ptx::space_shared);
   }
   __syncthreads();
 
   if (threadIdx.x == 0) {
     const char *src = gmem + (size_t)blockIdx.x * slice_bytes;
+    tma_barrier::arrival_token token[kTmaStages];
     for (int c = 0; c < chunks_per_block; ++c) {
       int stage = c % kTmaStages;
-      uint32_t mbar_addr = (uint32_t)__cvta_generic_to_shared(&mbar[stage]);
       if (c >= kTmaStages) {
         // Reusing a stage: wait for its previous transfer to complete.
-        CMB_MBAR_WAIT(mbar_addr, (unsigned int)(((c / kTmaStages) - 1) & 1));
+        bar[stage].wait(std::move(token[stage]));
       }
-      uint32_t dst = smem_base + (uint32_t)(stage * kTmaChunkBytes);
-      asm volatile(
-          "cp.async.bulk.shared::cluster.global.mbarrier::complete_tx::bytes [%0], [%1], %2, [%3];" ::"r"(dst),
-          "l"(src + (size_t)c * kTmaChunkBytes),
-          "r"((unsigned int)kTmaChunkBytes),
-          "r"(mbar_addr)
-          : "memory");
-      // arrive and tell the mbarrier how many bytes the TMA will transfer
-      uint64_t token __attribute__((unused));
-      asm volatile("mbarrier.arrive.expect_tx.release.cta.shared.b64 %0, [%1], %2;"
-                   : "=l"(token)
-                   : "r"(mbar_addr), "r"((unsigned int)kTmaChunkBytes));
+      char *dst = smem_raw + (size_t)stage * kTmaChunkBytes;
+      token[stage] = cuda::device::barrier_arrive_tx(
+          bar[stage], 1, (cuda::std::ptrdiff_t)kTmaChunkBytes);
+      cuda::device::memcpy_async_tx(dst, src + (size_t)c * kTmaChunkBytes,
+                                    cuda::aligned_size_t<16>(kTmaChunkBytes),
+                                    bar[stage]);
     }
-    // Drain the last in-flight stages before the block exits.
-    int first = chunks_per_block >= kTmaStages ? chunks_per_block - kTmaStages : 0;
-    for (int c = first; c < chunks_per_block; ++c) {
-      int stage = c % kTmaStages;
-      uint32_t mbar_addr = (uint32_t)__cvta_generic_to_shared(&mbar[stage]);
-      CMB_MBAR_WAIT(mbar_addr, (unsigned int)((c / kTmaStages) & 1));
-    }
+    // Drain the in-flight stages before the block exits.
+    int drain = chunks_per_block < kTmaStages ? chunks_per_block : kTmaStages;
+    for (int s = 0; s < drain; ++s)
+      bar[s].wait(std::move(token[s]));
   }
   __syncthreads();
   // keep smem references alive

@@ -159,7 +159,7 @@
 - `src/warp_collectives.cu` — `vote.ballot.sync`、`elect.sync`、`redux.sync.add`、divergence、branch warm/cold、predicated divergence、IPC vs warps。
 - `src/memory_more.cu` — cache-line、coalescing、async copy 16 B、L1 per-warp BW、L2 aggregate BW。
 - `src/coissue.cu` — FMA+IMAD pipe-to-pipe co-issue overlap。
-- `src/tma.cu` — `cp.async.bulk.tensor` 1D 16 B load latency（mbarrier + `__grid_constant__`）；`cp.async.bulk` G2S bulk-copy 带宽（16 KiB × 4 级流水，host 侧计时）。
+- `src/tma.cu` — `cp.async.bulk.tensor` 1D 16 B load latency（mbarrier + `__grid_constant__`）；G2S bulk-copy 带宽（CUDA C++ `cuda::device::memcpy_async_tx` + transaction barrier，16 KiB × 4 级流水，host 侧计时）。
 - `src/atomics.cu` — `atomicAdd` throughput/latency、`atomicCAS/Exch/Min/Max` latency、block reduce。
 - `src/barriers.cu` — `__syncthreads`、`bar.sync`、`mbarrier`、fence latencies。
 - `src/cluster.cu` — cluster launch 与 cluster barrier latency。
