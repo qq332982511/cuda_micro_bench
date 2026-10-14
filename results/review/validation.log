@@ -1,0 +1,17 @@
+$ make
+make: Nothing to be done for 'all'.
+$ python3 tools/validate_results.py
+Full RTX 5060 Ti result passes coverage, units, finite-value and physical-sanity checks (275 metrics).
+$ python3 tools/validate_results.py results/review/final-1.json
+Full RTX 5060 Ti result passes coverage, units, finite-value and physical-sanity checks (275 metrics).
+$ python3 tools/validate_results.py results/review/final-2.json
+Full RTX 5060 Ti result passes coverage, units, finite-value and physical-sanity checks (275 metrics).
+$ python3 tools/validate_results.py results/review/final-3.json
+Full RTX 5060 Ti result passes coverage, units, finite-value and physical-sanity checks (275 metrics).
+$ python3 tools/validate_report.py
+All report metric keys are present in results.json.
+$ python3 tools/validate_sass.py
+SASS check passes: timed arithmetic/memory loops remain, ADDs are not fused, vector co-issue paths and end-clock predicates are present.
+$ node tools/validate_render.js
+Report JavaScript renders all tables and diagram bindings with current results.
+$ git diff --check

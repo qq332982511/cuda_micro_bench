@@ -4,3 +4,7 @@ cuda_micro_bench
 *.ptx
 *.cubin
 *.fatbin
+
+# Full disassembly is reproducible; concise audit is kept in results/review.
+results/review/*.sass
+__pycache__/

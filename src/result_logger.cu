@@ -1,6 +1,7 @@
 #include "result_logger.h"
 #include <cstdio>
 #include <fstream>
+#include <cstdlib>
 
 namespace cmb {
 
@@ -24,7 +25,9 @@ void ResultLogger::writeJson(const std::string &path) const {
     for (const auto &kv : sec.second) {
       jw.key(kv.first);
       jw.beginObject();
-      jw.keyValue("value", kv.second.value);
+      jw.key("value");
+      if (kv.second.unit == "N/A") jw.null();
+      else jw.value(kv.second.value);
       jw.keyValue("unit", kv.second.unit);
       jw.endObject();
     }
@@ -34,7 +37,9 @@ void ResultLogger::writeJson(const std::string &path) const {
   jw.endObject();
 
   std::ofstream ofs(path);
+  if (!ofs) { fprintf(stderr, "Cannot open results path: %s\n", path.c_str()); std::exit(EXIT_FAILURE); }
   ofs << jw.str();
+  if (!ofs) { fprintf(stderr, "Cannot write results path: %s\n", path.c_str()); std::exit(EXIT_FAILURE); }
 }
 
 } // namespace cmb

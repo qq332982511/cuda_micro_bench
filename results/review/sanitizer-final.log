@@ -1,0 +1,48 @@
+========= COMPUTE-SANITIZER
+========= Error: Failed to initialize WDDM debugger interface. Please run EnableDebuggerInterface.bat as an administrator
+=========
+========= Error: Device not supported. Please refer to the "Supported Devices" section of the sanitizer documentation
+=========
+=== Global Memory Benchmarks (median of 5) ===
+    16 MiB: copy 1274.89 GiB/s (read+write), read 1122.49 GiB/s
+    64 MiB: copy 351.91 GiB/s (read+write), read 366.65 GiB/s
+   128 MiB: copy 350.30 GiB/s (read+write), read 385.73 GiB/s
+   256 MiB: copy 353.95 GiB/s (read+write), read 390.45 GiB/s
+  DRAM random chase (.cg, 256 MiB): 902.53 cycles (342.91 nominal ns)
+=== Cluster ===
+  Cluster launch verified: size=8
+  Cluster barrier (2 blocks): 382.45 cycles
+  Cluster barrier (8 blocks): 384.17 cycles
+  DSMEM dependent remote read: 211.01 cycles
+=== Device Info ===
+Device ID           : 0
+Name                : NVIDIA GeForce RTX 5060 Ti
+Compute Capability  : 12.0
+SM Count            : 36
+Warp Size           : 32
+Max Warps/SM        : 48
+Max Threads/SM      : 1536
+Max Threads/Block   : 1024
+Max Blocks/SM       : 24
+Registers/SM        : 65536
+Registers/Thread    : 255
+Shared Memory/SM    : 100 KiB
+Shared/Block default: 48 KiB
+Shared/Block opt-in : 99 KiB
+Global Memory       : 15.93 GiB
+Core Clock (nominal) : 2.632 GHz
+Memory Clock (CUDA)  : 14.001 GHz
+Memory Bus Width    : 128 bit
+L2 Cache Size       : 32768 KiB
+
+=== Derived / Theoretical Limits ===
+Peak FP32 (theoretical, all SMs) : 24.26 TFLOP/s
+Peak FP64 (consumer estimate)    : 0.38 TFLOP/s
+Peak Memory BW (theoretical)     : 448.03 GB/s
+
+=== Topology Values Not Exposed by Runtime ===
+GPC count             : N/A (not exposed)
+TPC count             : N/A (not exposed)
+L2 partition count    : N/A (not exposed)
+Memory controller count: N/A (not exposed)
+========= ERROR SUMMARY: 2 errors

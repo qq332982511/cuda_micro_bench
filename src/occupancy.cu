@@ -28,11 +28,11 @@ void benchmark_occupancy() {
   int block_sizes[] = {64, 128, 256, 512, 1024};
   for (int bs : block_sizes) {
     int min_grid, best_block;
-    cudaOccupancyMaxPotentialBlockSize(&min_grid, &best_block,
-                                       kernel_occupancy, 0, 0);
+    CUDA_CHECK(cudaOccupancyMaxPotentialBlockSize(&min_grid, &best_block,
+                                       kernel_occupancy, 0, 0));
     int max_blocks;
-    cudaOccupancyMaxActiveBlocksPerMultiprocessor(&max_blocks, kernel_occupancy,
-                                                  bs, 0);
+    CUDA_CHECK(cudaOccupancyMaxActiveBlocksPerMultiprocessor(&max_blocks, kernel_occupancy,
+                                                  bs, 0));
     printf("  Block size %4d -> max blocks/SM: %d\n", bs, max_blocks);
     char key[64];
     snprintf(key, sizeof(key), "max_blocks_per_sm_block_%d", bs);
@@ -54,6 +54,7 @@ void benchmark_occupancy() {
   timer.start();
   kernel_occupancy<<<blocks, threads>>>(d_in, d_out, n, 1 << 10);
   timer.stop();
+  CUDA_CHECK(cudaGetLastError());
   float ms = timer.elapsedMs();
   printf("  Occupancy kernel %d blocks x %d threads: %.3f ms\n", blocks, threads,
          ms);

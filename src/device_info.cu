@@ -31,11 +31,13 @@ void benchmark_device_info() {
   g_results.log("topology", "max_blocks_per_sm", info.max_blocks_per_sm, "");
   g_results.log("topology", "registers_per_sm", info.regs_per_sm, "");
   g_results.log("topology", "shared_memory_per_sm_kb",
-                info.shared_mem_per_sm / 1024.0, "KB");
+                info.shared_mem_per_sm / 1024.0, "KiB");
+  g_results.log("topology", "shared_memory_per_block_default_kb", info.shared_mem_per_block / 1024.0, "KiB");
+  g_results.log("topology", "shared_memory_per_block_optin_kb", info.shared_mem_per_block_optin / 1024.0, "KiB");
   g_results.log("topology", "shared_memory_banks", 32, "");
   g_results.log("topology", "shared_memory_bank_width_bytes", 4, "bytes");
   g_results.log("topology", "l2_cache_size_mb", info.l2_cache_size / (1024.0 * 1024.0),
-                "MB");
+                "MiB");
   g_results.log("clock", "core_clock_mhz", info.clock_rate_khz / 1000.0, "MHz");
   g_results.log("clock", "memory_clock_mhz", info.memory_clock_khz / 1000.0, "MHz");
   g_results.log("peak", "fp32_tflops", peak_fp32_tflops, "TFLOP/s");

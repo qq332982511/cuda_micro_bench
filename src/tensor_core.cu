@@ -33,9 +33,8 @@ __global__ void kernel_mma_latency(unsigned int *cycles, int iters) {
   }
   CMB_CLOCK_STOP();
 
-  if ((int)c[0] == 0xdeadbeef)
-    t1 = clockVal();
-  cycles[0] = t1 - t0;
+  CMB_DEPENDENCY_GUARD(c[0]);
+  if (threadIdx.x == 0) cycles[0] = t1 - t0;
 #endif
 }
 
@@ -85,11 +84,11 @@ void benchmark_tensor_core() {
     CUDA_CHECK(cudaMemcpy(&h_cycles, d_cycles, sizeof(unsigned int),
                           cudaMemcpyDeviceToHost));
     double cyc = (double)h_cycles / iters;
-    double ns = cyc * 1e9 / info.clock_rate_khz;
-    printf("  MMA m16n8k8 latency: %.2f cycles (%.2f ns)\n", cyc, ns);
+    double ns = cyclesToNominalNs(cyc, info.clock_rate_khz);
+    printf("  MMA m16n8k8 latency: %.2f cycles (%.2f nominal ns)\n", cyc, ns);
     g_results.log("tensor_core", "mma_m16n8k8_latency_cyc", cyc, "cycles");
-    g_results.log("tensor_core", "mma_m16n8k8_latency_ns", ns, "ns");
-    g_results.log("instructions", "hmma_16816_latency_cyc", cyc, "cycles");
+    g_results.log("tensor_core", "mma_m16n8k8_latency_ns", ns, "nominal ns");
+
     CUDA_CHECK(cudaFree(d_cycles));
   }
 
@@ -114,8 +113,8 @@ void benchmark_tensor_core() {
     printf("  MMA m16n8k8 throughput: %.2f TFLOP/s\n", tflops);
     g_results.log("tensor_core", "mma_m16n8k8_throughput_tflops", tflops,
                   "TFLOP/s");
-    g_results.log("peak", "fp16_tensor_tflops", tflops,
-                  "TFLOP/s (TF32 measured, used for comparison)");
+    g_results.log("peak", "tf32_tensor_tflops", tflops,
+                  "TFLOP/s");
     CUDA_CHECK(cudaFree(d_out));
   }
 }

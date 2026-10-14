@@ -1,0 +1,136 @@
+{
+  "verified_utc": "2026-10-13T20:03:39.480932+00:00",
+  "checks": [
+    {
+      "command": [
+        "make"
+      ],
+      "exit_code": 0
+    },
+    {
+      "command": [
+        "python3",
+        "tools/validate_results.py"
+      ],
+      "exit_code": 0
+    },
+    {
+      "command": [
+        "python3",
+        "tools/validate_results.py",
+        "results/review/final-1.json"
+      ],
+      "exit_code": 0
+    },
+    {
+      "command": [
+        "python3",
+        "tools/validate_results.py",
+        "results/review/final-2.json"
+      ],
+      "exit_code": 0
+    },
+    {
+      "command": [
+        "python3",
+        "tools/validate_results.py",
+        "results/review/final-3.json"
+      ],
+      "exit_code": 0
+    },
+    {
+      "command": [
+        "python3",
+        "tools/validate_report.py"
+      ],
+      "exit_code": 0
+    },
+    {
+      "command": [
+        "python3",
+        "tools/validate_sass.py"
+      ],
+      "exit_code": 0
+    },
+    {
+      "command": [
+        "node",
+        "tools/validate_render.js"
+      ],
+      "exit_code": 0
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit_code": 0
+    }
+  ],
+  "full_run_exit_codes": [
+    0,
+    0,
+    0
+  ],
+  "full_run_commands": [
+    "./cuda_micro_bench",
+    "./cuda_micro_bench --json",
+    "./cuda_micro_bench --all"
+  ],
+  "metric_count": 275,
+  "sanitizer": {
+    "exit_code": 99,
+    "instrumentation_available": false,
+    "reason": "WDDM debugger interface disabled; device instrumentation not initialized"
+  },
+  "source_sha256": {
+    "Makefile": "e9fb818bf74a60fd8f184bcff6f039ed51372cc833833d8507aa7b96430b8600",
+    "include/bench_common.h": "96f32a430bb271cdf3a103f15be24c570306eec6b3e2414cb5d1fa1c17f1740f",
+    "include/memory_chase.h": "10c34998fe269f5d3d0c9a366adea227037d95aac057413392d6e5dd67992e7f",
+    "include/result_logger.h": "0d5ddd128c116ce6bee04c7703186385d9b7c6ea3b04dc78d35b496ac46addb7",
+    "include/timer.h": "ef6eff75eb26e4340f2692be1d6b094e3361e875bd2f9fb249461a74f8b38dc5",
+    "include/utils.h": "d8356f8afc71b2e6927528bccd7b4644e56ebffeb118c49b56c92cc762497e82",
+    "src/atomics.cu": "38a5e89ba4d4c13caf92a603be6f48d6c4a5b12d85d036c541fdfe0fb1fb472c",
+    "src/barriers.cu": "946d380389e8307fc854aeaeabaa035fc228609eb41ee8ef2d2470116bea5d2f",
+    "src/cluster.cu": "9645a8284a695d5dfe366ebf2ced5fd96330fd0b0ccfd42e7d7c82bc502e1fc6",
+    "src/coissue.cu": "3fb9d4d376bea8fa542ed0774e97ebddc1cc5ed0544db3b9d1b3c26358f48b82",
+    "src/compute_latency.cu": "fce0952577256eaa6bf8404ccb747675bb3728527f433360cb6bce4f887137b8",
+    "src/compute_throughput.cu": "260539fc6b8829ab7174a7f3cec060899da78cb80fca4dfba616853db20c682d",
+    "src/device_info.cu": "012a0d347f5cae3b71b67df60f2cd7fd16dc0b649d6780fc17665a6d3799a9ac",
+    "src/instruction_throughput.cu": "8dbdd54f53c832a162e1b54c9af6444a064b4a83f116f2b84d389de839b585a8",
+    "src/instructions_extended.cu": "c0f70937d9b5b781b9ff3e9f79c82cb5b019c414c2cd8ddb281de7802a2bcef2",
+    "src/instructions_more.cu": "cef2a92597e467ed1218522047cc9dc7c157668cdf83c826bf29e95116880b06",
+    "src/main.cu": "30b4375d632b313e0150176292c110afc1a7bca5a565da269c4d5e4696f54a94",
+    "src/mem_cache.cu": "3ec423cd14cf6fd7ce7fce220a3f3827abb293480d76d9e27746b47886aa4634",
+    "src/mem_global.cu": "d9e7120a414cba9b6ec6c8dca398a527d0b10d279a5296738b6b7396057159e5",
+    "src/mem_shared.cu": "baedc041b2aa160cdbcf52374095a706f82474a429b79061e0302b98f4ecbb96",
+    "src/memory_chase.cu": "8f2d9a1f8e4891f88a796d910c254ba0e658d049c3939b9c34a143511c116d40",
+    "src/memory_more.cu": "7e05f8b4216067ff7cd95c80aa89096360dedaf1578f8dc2e8882e69d26ab267",
+    "src/occupancy.cu": "e3a41d0fab5ceb7a11b7f0cd68108fa050a8947e867148a0e4860696f4fc63fd",
+    "src/pcie.cu": "d1f5cf9c98cea82eba479c489acdd06fab14c7341ffe65f68eb22869d7632dc1",
+    "src/pipeline_depth.cu": "7b4c5bd9283a759abe9064ae901aa7817208754f20098e8cafad3172f7eb0c15",
+    "src/result_logger.cu": "0f363e8b5ea93d34a4df348da805518cd5fc75e25ad10223819e9b8674edd8bf",
+    "src/tensor_core.cu": "ba2ac7b9b49453e0459d1936beba19867712bd336959873b11edf8e1c7712ec3",
+    "src/tensor_core_extended.cu": "73978a92e2c24843cff5ca94ffbd6e04b4cc2ccbe8e8fd1855d6b5d04bab1c84",
+    "src/tensor_more.cu": "25b1f6f6a09d4ac8cc92f7812b275f254298242feb584f0dc90d9c74683ed63f",
+    "src/tma.cu": "6f15a524859a1abb19a5bb29a87a27cec6b0309f52060467d965179a676057f1",
+    "src/topology_extended.cu": "3c763f85161356f4a0fd41144c75335480b32de432f36253a4a289f8f4cc4640",
+    "src/warp_collectives.cu": "27772bdb3f8f92dcad0005656460c572511efdd2944ab8c5e631e42ef9dafa71",
+    "src/warp_shuffle.cu": "e3b1834480a353b8b764d247262d7421d53e718a8e07f859f92e4fd177e67c24"
+  },
+  "artifact_sha256": {
+    "cuda_micro_bench": "224837672ed7cc9d4f20b05318606833fe1bc61b8b91e2ffee45493aeb808ce9",
+    "results/results.json": "232f48f13a4f8ef76031c161e8c2a2c8aee004a5d8bd2d823aea96769f0a7ca2",
+    "docs/results.json": "232f48f13a4f8ef76031c161e8c2a2c8aee004a5d8bd2d823aea96769f0a7ca2",
+    "REVIEW.md": "01fb29e2a7b1aed72008b00ff12cda131564271398fd9b13f9de111b8163e67a",
+    "results/report.html": "c454b29e3f16109822944e8f58582da1354d3ac5f829b8b6961fde8c7660437b",
+    "docs/index.html": "c454b29e3f16109822944e8f58582da1354d3ac5f829b8b6961fde8c7660437b",
+    "results/review/final-1.json": "b88e65b15b5594f253d36cb94e65849dffd1b5abd3f39db55f8d3b8d9f25716c",
+    "results/review/final-1.log": "af847ccedc78eb1afbfdaf2f07001d2896fd37852be9f2edaaeef8e6ee2ec23c",
+    "results/review/final-2.json": "4b695ed250ca6d956f5628f65b2f043ca66ea0d896c0718871a64b358da34dd7",
+    "results/review/final-2.log": "7906ccb0b7e3064de19a32b8211668bd6ba6043c4c2cb4719710a96d6caac879",
+    "results/review/final-3.json": "232f48f13a4f8ef76031c161e8c2a2c8aee004a5d8bd2d823aea96769f0a7ca2",
+    "results/review/final-3.log": "d1f8b68201053ddbfb26e800637340408b98a8de8c292b00272e11dee0163c0a"
+  }
+}

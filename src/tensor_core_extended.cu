@@ -9,21 +9,6 @@
 
 namespace cmb {
 
-// Keep result alive without touching memory in the hot loop.
-__device__ __noinline__ void sink_u32x2(uint32_t v0, uint32_t v1) {
-  volatile uint32_t s[2] = {v0, v1};
-  (void)s[0];
-}
-__device__ __noinline__ void sink_f32x4(float v0, float v1, float v2,
-                                         float v3) {
-  volatile float s[4] = {v0, v1, v2, v3};
-  (void)s[0];
-}
-__device__ __noinline__ void sink_s32x4(int v0, int v1, int v2, int v3) {
-  volatile int s[4] = {v0, v1, v2, v3};
-  (void)s[0];
-}
-
 static __device__ __forceinline__ float half2_to_float(uint32_t v, int idx) {
   __half_raw h;
   h.x = (v >> (idx * 16)) & 0xffff;
@@ -55,8 +40,8 @@ __global__ void kernel_hmma_f16_latency(unsigned int *cycles, int iters) {
           "r"(c[0]), "r"(c[1]));
   }
   CMB_CLOCK_STOP();
-  sink_u32x2(c[0], c[1]);
-  cycles[0] = t1 - t0;
+  CMB_DEPENDENCY_GUARD(c[0] ^ c[1]);
+  if (threadIdx.x == 0) cycles[0] = t1 - t0;
 #endif
 }
 
@@ -112,8 +97,8 @@ __global__ void kernel_hmma_bf16_latency(unsigned int *cycles, int iters) {
           "f"(c[0]), "f"(c[1]), "f"(c[2]), "f"(c[3]));
   }
   CMB_CLOCK_STOP();
-  sink_f32x4(c[0], c[1], c[2], c[3]);
-  cycles[0] = t1 - t0;
+  CMB_DEPENDENCY_GUARD(c[0] + c[1] + c[2] + c[3]);
+  if (threadIdx.x == 0) cycles[0] = t1 - t0;
 #endif
 }
 
@@ -143,15 +128,15 @@ __global__ void kernel_hmma_bf16_throughput(float *out, int iters) {
 }
 
 // ------------------------------------------------------------------
-// FP8 m16n8k32 (f32.e4m3.e4m3.f32)
+// FP8 m16n8k32 (f32.e4m3.e4m3.f32); E4M3 1.0 encodes as 0x38.
 // ------------------------------------------------------------------
 __global__ void kernel_hmma_fp8_latency(unsigned int *cycles, int iters) {
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 890
   int a[4], b[2];
   float c[4];
   #pragma unroll
-  for (int i = 0; i < 4; ++i) a[i] = 0x01010101;
-  for (int i = 0; i < 2; ++i) b[i] = 0x01010101;
+  for (int i = 0; i < 4; ++i) a[i] = 0x38383838;
+  for (int i = 0; i < 2; ++i) b[i] = 0x38383838;
   for (int i = 0; i < 4; ++i) c[i] = 0.0f;
 
   CMB_CLOCK_START();
@@ -168,8 +153,8 @@ __global__ void kernel_hmma_fp8_latency(unsigned int *cycles, int iters) {
           "f"(c[0]), "f"(c[1]), "f"(c[2]), "f"(c[3]));
   }
   CMB_CLOCK_STOP();
-  sink_f32x4(c[0], c[1], c[2], c[3]);
-  cycles[0] = t1 - t0;
+  CMB_DEPENDENCY_GUARD(c[0] + c[1] + c[2] + c[3]);
+  if (threadIdx.x == 0) cycles[0] = t1 - t0;
 #endif
 }
 
@@ -178,8 +163,8 @@ __global__ void kernel_hmma_fp8_throughput(float *out, int iters) {
   int a[4], b[2];
   float c[4];
   #pragma unroll
-  for (int i = 0; i < 4; ++i) a[i] = 0x01010101;
-  for (int i = 0; i < 2; ++i) b[i] = 0x01010101;
+  for (int i = 0; i < 4; ++i) a[i] = 0x38383838;
+  for (int i = 0; i < 2; ++i) b[i] = 0x38383838;
   for (int i = 0; i < 4; ++i) c[i] = 0.0f;
 
   for (int r = 0; r < iters; ++r) {
@@ -224,8 +209,8 @@ __global__ void kernel_hmma_int8_latency(unsigned int *cycles, int iters) {
           "r"(c[0]), "r"(c[1]), "r"(c[2]), "r"(c[3]));
   }
   CMB_CLOCK_STOP();
-  sink_s32x4(c[0], c[1], c[2], c[3]);
-  cycles[0] = t1 - t0;
+  CMB_DEPENDENCY_GUARD(c[0] ^ c[1] ^ c[2] ^ c[3]);
+  if (threadIdx.x == 0) cycles[0] = t1 - t0;
 #endif
 }
 
@@ -268,8 +253,8 @@ static void measure_mma_latency(void (*kernel)(unsigned int *, int),
   CUDA_CHECK(cudaMemcpy(&h_cycles, d_cycles, sizeof(unsigned int),
                         cudaMemcpyDeviceToHost));
   double cyc = (double)h_cycles / iters;
-  double ns = cyc * 1e9 / info.clock_rate_khz;
-  printf("  %-18s latency: %.2f cycles (%.2f ns)\n", label, cyc, ns);
+  double ns = cyclesToNominalNs(cyc, info.clock_rate_khz);
+  printf("  %-18s latency: %.2f cycles (%.2f nominal ns)\n", label, cyc, ns);
   g_results.log("tensor_core_extended", std::string(label) + "_latency_cycles",
                 cyc, "cycles");
   g_results.log("tensor_core_extended", std::string(label) + "_latency_ns", ns,
@@ -301,6 +286,8 @@ static void measure_mma_throughput_fp(void (*kernel)(float *, int),
   printf("  %-18s throughput: %.2f TFLOP/s\n", label, tflops);
   g_results.log("tensor_core_extended", std::string(label) + "_throughput_TFs",
                 tflops, "TFLOP/s");
+  if (std::string(label) == "fp16_m16n8k16")
+    g_results.log("peak", "fp16_tensor_tflops", tflops, "TFLOP/s (FP16 accumulation)");
   CUDA_CHECK(cudaFree(d_out));
 }
 
@@ -360,10 +347,10 @@ void benchmark_tensor_core_extended() {
     measure_mma_throughput_fp(kernel_hmma_fp8_throughput, "fp8_m16n8k32", iters,
                               16LL * 8 * 32 * 2);
 
-    // INT8 m16n8k32: 16*8*32 = 4096 MACs = 4096 ops
+    // INT8 m16n8k32: 16*8*32 = 4096 MACs = 8192 ops (mul + add)
     measure_mma_latency(kernel_hmma_int8_latency, "int8_m16n8k32", iters);
     measure_mma_throughput_int(kernel_hmma_int8_throughput, "int8_m16n8k32",
-                               iters, 16LL * 8 * 32);
+                               iters, 16LL * 8 * 32 * 2);
   } else {
     printf("  FP8/INT8 m16n8k32 require compute capability >= 8.9. Skipping.\n");
   }

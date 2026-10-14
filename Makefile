@@ -18,7 +18,7 @@ SRCS      = src/main.cu src/result_logger.cu src/device_info.cu \
             src/instructions_more.cu src/warp_collectives.cu \
             src/tensor_more.cu src/memory_more.cu src/coissue.cu \
             src/tma.cu src/instruction_throughput.cu \
-            src/mem_global.cu src/mem_shared.cu src/mem_cache.cu \
+            src/mem_global.cu src/mem_shared.cu src/mem_cache.cu src/memory_chase.cu \
             src/compute_throughput.cu src/compute_latency.cu \
             src/atomics.cu src/tensor_core.cu src/occupancy.cu \
             src/warp_shuffle.cu src/barriers.cu src/instructions_extended.cu \
@@ -34,7 +34,7 @@ $(TARGET): $(OBJS)
 	$(NVCC) $(CXXFLAGS) $(INCS) $^ -o $@ -lcuda
 
 build/%.o: src/%.cu | build
-	$(NVCC) $(CXXFLAGS) $(INCS) -dc $< -o $@
+	$(NVCC) $(CXXFLAGS) $(INCS) -MMD -MP -dc $< -o $@
 
 build:
 	mkdir -p build
@@ -49,3 +49,5 @@ run: $(TARGET)
 
 clean:
 	rm -rf build $(TARGET)
+
+-include $(OBJS:.o=.d)

@@ -11,7 +11,7 @@ template <int ILP>
 __global__ void kernel_ilp_ffma(int iters, unsigned int *out) {
   float a[ILP];
   for (int i = 0; i < ILP; ++i)
-    a[i] = 1.0f + i * 0.001f;
+    a[i] = 1.0f + (i + threadIdx.x) * 0.001f;
   const float b = 1.0001f;
 
   CMB_CLOCK_START();
@@ -31,16 +31,15 @@ __global__ void kernel_ilp_ffma(int iters, unsigned int *out) {
 #pragma unroll
   for (int i = 0; i < ILP; ++i)
     sum += a[i];
-  if (sum == 0.0f)
-    t1 = t0;
-  out[0] = t1 - t0;
+  CMB_DEPENDENCY_GUARD(sum);
+  if (threadIdx.x == 0) out[0] = t1 - t0;
 }
 
 template <int ILP>
 __global__ void kernel_ilp_imad(int iters, unsigned int *out) {
   int a[ILP];
   for (int i = 0; i < ILP; ++i)
-    a[i] = 1 + i;
+    a[i] = 1 + i + threadIdx.x;
   // Runtime multiplicand/addend prevent closed-form folding of the loop.
   const int m = threadIdx.x + 3;
   const int n = blockIdx.x + 7;
@@ -58,13 +57,12 @@ __global__ void kernel_ilp_imad(int iters, unsigned int *out) {
   }
   CMB_CLOCK_STOP();
 
-  int sum = 0;
+  unsigned int sum = 0;
 #pragma unroll
   for (int i = 0; i < ILP; ++i)
     sum += a[i];
-  if (sum == 0xdeadbeef)
-    t1 = t0;
-  out[0] = t1 - t0;
+  CMB_DEPENDENCY_GUARD(sum);
+  if (threadIdx.x == 0) out[0] = t1 - t0;
 }
 
 template <typename Kernel>
@@ -118,18 +116,17 @@ void benchmark_pipeline_depth() {
     g_results.log("pipeline_depth", key, p.cyc, "cycles");
   }
 
-  // Pipeline depth approximation: latency at ILP=1 approximates the number of
-  // pipeline stages for a fully-pipelined unit.
+  // Dependency cost includes loop overhead; it does not measure physical stage count.
   double ffma_depth = ffma[0].cyc;
   double imad_depth = imad[0].cyc;
-  printf("  Inferred pipeline depth: FFMA=%.1f cyc, IMAD=%.1f cyc\n",
+  printf("  Dependent chain cost: FFMA=%.1f cyc, IMAD=%.1f cyc\n",
          ffma_depth, imad_depth);
-  g_results.log("pipeline_depth", "ffma_pipeline_depth_cycles", ffma_depth, "cycles");
-  g_results.log("pipeline_depth", "imad_pipeline_depth_cycles", imad_depth, "cycles");
+  g_results.log("pipeline_depth", "ffma_dependent_chain_cycles", ffma_depth, "cycles");
+  g_results.log("pipeline_depth", "imad_dependent_chain_cycles", imad_depth, "cycles");
 
-  // I-buffer depth inference: smallest ILP where cycles/op is within 10% of the
+  // ILP saturation observation (does not measure I-buffer depth): smallest ILP where cycles/op is within 10% of the
   // minimum observed value.
-  auto infer_ibuffer = [](const auto *arr, int n) {
+  auto infer_saturation = [](const auto *arr, int n) {
     double min_cyc = arr[0].cyc;
     for (int i = 1; i < n; ++i)
       if (arr[i].cyc < min_cyc)
@@ -140,14 +137,14 @@ void benchmark_pipeline_depth() {
     }
     return arr[n - 1].ilp;
   };
-  int ffma_ibuf = infer_ibuffer(ffma, 5);
-  int imad_ibuf = infer_ibuffer(imad, 5);
-  printf("  Inferred I-buffer depth: FFMA=%d entries, IMAD=%d entries\n",
-         ffma_ibuf, imad_ibuf);
-  g_results.log("pipeline_depth", "inferred_ibuffer_entries_ffma",
-                (double)ffma_ibuf, "entries");
-  g_results.log("pipeline_depth", "inferred_ibuffer_entries_imad",
-                (double)imad_ibuf, "entries");
+  int ffma_saturation = infer_saturation(ffma, 5);
+  int imad_saturation = infer_saturation(imad, 5);
+  printf("  ILP within 10%% of best measured throughput: FFMA=%d chains, IMAD=%d chains\n",
+         ffma_saturation, imad_saturation);
+  g_results.log("pipeline_depth", "saturation_ilp_ffma",
+                (double)ffma_saturation, "chains");
+  g_results.log("pipeline_depth", "saturation_ilp_imad",
+                (double)imad_saturation, "chains");
 }
 
 } // namespace cmb

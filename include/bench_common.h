@@ -13,17 +13,19 @@ constexpr int DEFAULT_WARPS = 32;
 
 inline int divUp(int a, int b) { return (a + b - 1) / b; }
 
+__global__ void kernel_init_stream(unsigned int *data, int n);
+
 // Helper to flush caches
 inline void flushL2() {
   int dev;
-  cudaGetDevice(&dev);
+  CUDA_CHECK(cudaGetDevice(&dev));
   cudaDeviceProp prop;
-  cudaGetDeviceProperties(&prop, dev);
+  CUDA_CHECK(cudaGetDeviceProperties(&prop, dev));
   size_t size = prop.l2CacheSize * 2;
   char *buf;
-  cudaMalloc(&buf, size);
-  cudaMemset(buf, 0, size);
-  cudaFree(buf);
+  CUDA_CHECK(cudaMalloc(&buf, size));
+  CUDA_CHECK(cudaMemset(buf, 0, size));
+  CUDA_CHECK(cudaFree(buf));
 }
 
 } // namespace cmb

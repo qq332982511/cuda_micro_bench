@@ -4,6 +4,7 @@
 #include <cuda_runtime.h>
 #include <cstdio>
 #include <vector>
+#include <type_traits>
 
 namespace cmb {
 
@@ -15,9 +16,13 @@ template <int N, typename T, typename F>
 __global__ void kernel_inst_thp(F f, T init, int iters, T *out) {
   T acc[N];
   #pragma unroll
-  for (int i = 0; i < N; ++i)
-    acc[i] = init;
+  for (int i = 0; i < N; ++i) {
+    acc[i] = init + static_cast<T>(threadIdx.x + i);
+    if constexpr (std::is_same<T, unsigned long long>::value)
+      acc[i] += static_cast<unsigned long long>((threadIdx.x + i) * 3 + 7) << 32;
+  }
 
+  #pragma unroll 1
   for (int r = 0; r < iters; ++r) {
     #pragma unroll
     for (int i = 0; i < N; ++i)
@@ -37,7 +42,7 @@ static double measure_inst_thp(F f, T init, const char *label,
                                const char *key) {
   DeviceInfo info = queryDevice(0);
   int threads = 256; // 8 warps per block
-  int blocks = info.sm_count * info.max_warps_per_sm;
+  int blocks = info.sm_count * 8;
   int iters = 1 << 12;
   T *d_out;
   CUDA_CHECK(cudaMalloc(&d_out, blocks * threads * sizeof(T)));
@@ -54,9 +59,11 @@ static double measure_inst_thp(F f, T init, const char *label,
 
   long long total_inst = (long long)blocks * threads * N * iters;
   double hz = (double)info.clock_rate_khz * 1000.0;
-  double ipc = (total_inst / (double)info.sm_count) / ((ms * 1e-3) * hz);
+  double ipc = (total_inst / 32.0 / (double)info.sm_count) / ((ms * 1e-3) * hz);
   printf("  %s throughput: %.2f inst/cycle\n", label, ipc);
-  g_results.log("instructions", key, ipc, "inst/cycle");
+  const std::string unit = std::string(key).find("bounded_sequence") != std::string::npos
+      ? "warp-sequences/nominal-cycle/SM" : "warp-PTX-ops/nominal-cycle/SM";
+  g_results.log("instructions", key, ipc, unit);
 
   CUDA_CHECK(cudaFree(d_out));
   return ipc;
@@ -87,12 +94,12 @@ struct InstFp32Mul {
 // INT32 arithmetic
 struct InstInt32Add {
   __device__ __forceinline__ void operator()(int &a, int iter) const {
-    asm volatile("add.s32 %0,%0,%0;" : "+r"(a));
+    asm volatile("add.s32 %0,%0,%1;" : "+r"(a) : "r"(threadIdx.x + 1));
   }
 };
 struct InstInt32Mul {
   __device__ __forceinline__ void operator()(int &a, int iter) const {
-    asm volatile("mul.lo.s32 %0,%0,%0;" : "+r"(a));
+    asm volatile("mul.lo.s32 %0,%0,%1;" : "+r"(a) : "r"(threadIdx.x + 7));
   }
 };
 
@@ -106,32 +113,34 @@ struct InstFp64Add {
 // SFU/MUFU
 struct InstRsqrt {
   __device__ __forceinline__ void operator()(float &a, int iter) const {
-    asm volatile("rsqrt.approx.f32 %0,%1;" : "=f"(a) : "f"(a));
+    asm volatile("rsqrt.approx.ftz.f32 %0,%1;" : "=f"(a) : "f"(a));
   }
 };
 struct InstSin {
   __device__ __forceinline__ void operator()(float &a, int iter) const {
-    asm volatile("sin.approx.f32 %0,%1;" : "=f"(a) : "f"(a));
+    asm volatile("sin.approx.ftz.f32 %0,%1;" : "=f"(a) : "f"(a));
   }
 };
 struct InstCos {
   __device__ __forceinline__ void operator()(float &a, int iter) const {
-    asm volatile("cos.approx.f32 %0,%1;" : "=f"(a) : "f"(a));
+    asm volatile("cos.approx.ftz.f32 %0,%1;" : "=f"(a) : "f"(a));
   }
 };
 struct InstEx2 {
   __device__ __forceinline__ void operator()(float &a, int iter) const {
-    asm volatile("ex2.approx.f32 %0,%1;" : "=f"(a) : "f"(a));
+    a = __uint_as_float((__float_as_uint(a) & 0x007fffffU) | 0x3f000000U);
+    asm volatile("ex2.approx.ftz.f32 %0,%1;" : "=f"(a) : "f"(a));
   }
 };
 struct InstLg2 {
   __device__ __forceinline__ void operator()(float &a, int iter) const {
-    asm volatile("lg2.approx.f32 %0,%1;" : "=f"(a) : "f"(a));
+    a = __uint_as_float((__float_as_uint(a) & 0x007fffffU) | 0x40000000U);
+    asm volatile("lg2.approx.ftz.f32 %0,%1;" : "=f"(a) : "f"(a));
   }
 };
 struct InstRcp {
   __device__ __forceinline__ void operator()(float &a, int iter) const {
-    asm volatile("rcp.approx.f32 %0,%1;" : "=f"(a) : "f"(a));
+    asm volatile("rcp.approx.ftz.f32 %0,%1;" : "=f"(a) : "f"(a));
   }
 };
 struct InstTanh {
@@ -143,7 +152,7 @@ struct InstTanh {
 // Extended integer
 struct InstIadd3 {
   __device__ __forceinline__ void operator()(int &a, int iter) const {
-    asm volatile("add.s32 %0,%0,%0;" : "+r"(a));
+    asm volatile("add.s32 %0,%0,%1;" : "+r"(a) : "r"(threadIdx.x + 1));
   }
 };
 struct InstImad {
@@ -153,7 +162,7 @@ struct InstImad {
 };
 struct InstLea {
   __device__ __forceinline__ void operator()(int &a, int iter) const {
-    asm volatile("add.s32 %0,%0,%0;" : "+r"(a));
+    asm volatile("mad.lo.s32 %0,%0,4,%1;" : "+r"(a) : "r"(threadIdx.x + 1));
   }
 };
 struct InstIdp4a {
@@ -166,7 +175,7 @@ struct InstIdp4a {
 struct InstLop3 {
   __device__ __forceinline__ void operator()(unsigned int &a, int iter) const {
     // LUT 0x80 implements out = a when all three inputs are the same register.
-    asm volatile("lop3.b32 %0,%0,%0,%0,0x80;" : "+r"(a));
+    asm volatile("lop3.b32 %0,%0,%1,%2,0xca;" : "+r"(a) : "r"(threadIdx.x + 3U), "r"(threadIdx.x + 9U));
   }
 };
 struct InstShlConst {
@@ -176,12 +185,12 @@ struct InstShlConst {
 };
 struct InstShlVar {
   __device__ __forceinline__ void operator()(unsigned int &a, int iter) const {
-    asm volatile("shl.b32 %0,%0,%1;" : "+r"(a) : "r"(iter & 31));
+    asm volatile("shl.b32 %0,%0,%1;" : "+r"(a) : "r"(threadIdx.x & 31));
   }
 };
 struct InstPrmt {
   __device__ __forceinline__ void operator()(unsigned int &a, int iter) const {
-    asm volatile("prmt.b32 %0,%0,%0,0x5410;" : "+r"(a));
+    asm volatile("prmt.b32 %0,%0,%0,0x1032;" : "+r"(a));
   }
 };
 
@@ -276,12 +285,14 @@ __global__ void kernel_ldg_thp(const float *data, int partition, int iters,
                                float *out) {
   int tid = threadIdx.x;
   int mask = partition - 1;
-  int base = (blockIdx.x * partition + tid) & mask;
+  data += blockIdx.x * partition;
+  int base = tid & mask;
   int idx0 = (base + 0) & mask;
   int idx1 = (base + 1) & mask;
   int idx2 = (base + 2) & mask;
   int idx3 = (base + 3) & mask;
   float acc0 = 0.0f, acc1 = 0.0f, acc2 = 0.0f, acc3 = 0.0f;
+  #pragma unroll 16
   for (int r = 0; r < iters; ++r) {
     idx0 = (idx0 + 4) & mask;
     idx1 = (idx1 + 4) & mask;
@@ -298,11 +309,13 @@ __global__ void kernel_ldg_thp(const float *data, int partition, int iters,
 __global__ void kernel_sts_thp(int iters, float *out) {
   int tid = threadIdx.x;
   __shared__ float smem[1024];
+  unsigned int addr = __cvta_generic_to_shared(smem + tid);
+#pragma unroll 16
   for (int r = 0; r < iters; ++r) {
-    smem[(tid + 0 * 32) % 1024] = 1.0f;
-    smem[(tid + 1 * 32) % 1024] = 1.0f;
-    smem[(tid + 2 * 32) % 1024] = 1.0f;
-    smem[(tid + 3 * 32) % 1024] = 1.0f;
+    asm volatile("st.volatile.shared.f32 [%0], %1;" :: "r"(addr), "f"(1.0f) : "memory");
+    asm volatile("st.volatile.shared.f32 [%0], %1;" :: "r"(addr + 1024), "f"(2.0f) : "memory");
+    asm volatile("st.volatile.shared.f32 [%0], %1;" :: "r"(addr + 2048), "f"(3.0f) : "memory");
+    asm volatile("st.volatile.shared.f32 [%0], %1;" :: "r"(addr + 3072), "f"(4.0f) : "memory");
   }
   out[blockIdx.x * blockDim.x + tid] = smem[tid];
 }
@@ -324,14 +337,14 @@ void benchmark_instruction_throughput() {
   MEASURE_THP(InstRsqrt, 1.0f, "RSQRT", "rsqrt_throughput_ipc");
   MEASURE_THP(InstSin, 1.0f, "SIN", "sin_throughput_ipc");
   MEASURE_THP(InstCos, 1.0f, "COS", "cos_throughput_ipc");
-  MEASURE_THP(InstEx2, 1.0f, "EX2", "ex2_throughput_ipc");
-  MEASURE_THP(InstLg2, 1.0f, "LG2", "lg2_throughput_ipc");
+  MEASURE_THP(InstEx2, 1.0f, "EX2 + domain map", "ex2_bounded_sequence_throughput");
+  MEASURE_THP(InstLg2, 1.0f, "LG2 + domain map", "lg2_bounded_sequence_throughput");
   MEASURE_THP(InstRcp, 1.0f, "RCP", "rcp_throughput_ipc");
   MEASURE_THP(InstTanh, 1.0f, "TANH", "tanh_throughput_ipc");
   // Extended integer
-  MEASURE_THP(InstIadd3, 1, "IADD3", "iadd3_throughput_ipc");
+  MEASURE_THP(InstIadd3, 1, "IADD (add.s32)", "iadd_throughput_ipc");
   MEASURE_THP(InstImad, 1, "IMAD", "imad_throughput_ipc");
-  MEASURE_THP(InstLea, 1, "LEA", "lea_throughput_ipc");
+  MEASURE_THP(InstLea, 1, "address arithmetic", "address_arithmetic_throughput_ipc");
   MEASURE_THP(InstIdp4a, 0, "IDP4A", "idp4a_throughput_ipc");
   // Logic / shift / permute
   MEASURE_THP(InstLop3, 0xffffffffu, "LOP3", "lop3_throughput_ipc");
@@ -344,15 +357,15 @@ void benchmark_instruction_throughput() {
   // SIMD packed
   MEASURE_THP(InstVadd2, 0x00010001u, "VADD2", "vadd2_throughput_ipc");
   MEASURE_THP(InstVadd4, 0x01010101u, "VADD4", "vadd4_throughput_ipc");
-  MEASURE_THP(InstFmaF16x2, 0u, "FMA f16x2", "fma_f16x2_throughput_ipc");
-  MEASURE_THP(InstFmaBf16x2, 0u, "FMA bf16x2", "fma_bf16x2_throughput_ipc");
-  MEASURE_THP(InstFmaF32x2, 0ULL, "FMA f32x2", "fma_f32x2_throughput_ipc");
+  MEASURE_THP(InstFmaF16x2, 0x3c003c00u, "FMA f16x2", "fma_f16x2_throughput_ipc");
+  MEASURE_THP(InstFmaBf16x2, 0x3f803f80u, "FMA bf16x2", "fma_bf16x2_throughput_ipc");
+  MEASURE_THP(InstFmaF32x2, 0x3f8000003f800000ULL, "FMA f32x2", "fma_f32x2_throughput_ipc");
 
   // Memory throughput (LDG / STS)
   {
     DeviceInfo info = queryDevice(0);
     int threads = 256;
-    int blocks = info.sm_count * info.max_warps_per_sm;
+    int blocks = info.sm_count * 8;
     int iters = 1 << 14; // longer run for memory to get accurate timer
     float *d_out;
     CUDA_CHECK(cudaMalloc(&d_out, blocks * threads * sizeof(float)));
@@ -361,6 +374,7 @@ void benchmark_instruction_throughput() {
     float *d_buf;
     CUDA_CHECK(cudaMalloc(&d_buf, blocks * partition * sizeof(float)));
 
+    CUDA_CHECK(cudaMemset(d_buf, 0, blocks * partition * sizeof(float)));
     // LDG
     kernel_ldg_thp<<<blocks, threads>>>(d_buf, partition, iters, d_out);
     CUDA_CHECK(cudaGetLastError());
@@ -374,7 +388,7 @@ void benchmark_instruction_throughput() {
     double ldg_ipc = (ldg_inst / (double)info.sm_count) /
                      ((ldg_ms * 1e-3) * ((double)info.clock_rate_khz * 1000.0));
     printf("  LDG throughput: %.2f inst/cycle\n", ldg_ipc);
-    g_results.log("instructions", "ldg_throughput_ipc", ldg_ipc, "inst/cycle");
+    g_results.log("instructions", "ldg_throughput_ipc", ldg_ipc, "warp-PTX-ops/nominal-cycle/SM");
 
     // STS
     kernel_sts_thp<<<blocks, threads>>>(iters, d_out);
@@ -389,7 +403,7 @@ void benchmark_instruction_throughput() {
     double sts_ipc = (sts_inst / (double)info.sm_count) /
                      ((sts_ms * 1e-3) * ((double)info.clock_rate_khz * 1000.0));
     printf("  STS throughput: %.2f inst/cycle\n", sts_ipc);
-    g_results.log("instructions", "sts_throughput_ipc", sts_ipc, "inst/cycle");
+    g_results.log("instructions", "sts_throughput_ipc", sts_ipc, "warp-PTX-ops/nominal-cycle/SM");
 
     CUDA_CHECK(cudaFree(d_buf));
     CUDA_CHECK(cudaFree(d_out));

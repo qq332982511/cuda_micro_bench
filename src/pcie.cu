@@ -10,8 +10,8 @@ __global__ void kernel_empty() {}
 
 __global__ void kernel_um_touch(int *p) { *p = *p + 1; }
 
-static double cpu_us(std::chrono::high_resolution_clock::time_point t0,
-                     std::chrono::high_resolution_clock::time_point t1) {
+static double cpu_us(std::chrono::steady_clock::time_point t0,
+                     std::chrono::steady_clock::time_point t1) {
   return std::chrono::duration<double, std::micro>(t1 - t0).count();
 }
 
@@ -19,16 +19,16 @@ void benchmark_pcie() {
   DeviceInfo info = queryDevice(0);
   printf("=== PCIe / Launch Latency ===\n");
 
-  // Kernel launch latency (cold): flush, then time first enqueue on CPU.
+  // First empty-kernel enqueue cost: flush, then time first enqueue on CPU.
   {
     CUDA_CHECK(cudaDeviceSynchronize());
-    auto t0 = std::chrono::high_resolution_clock::now();
+    auto t0 = std::chrono::steady_clock::now();
     kernel_empty<<<1, 1>>>();
-    auto t1 = std::chrono::high_resolution_clock::now();
+    auto t1 = std::chrono::steady_clock::now();
     CUDA_CHECK(cudaGetLastError());
     double us = cpu_us(t0, t1);
-    printf("  Kernel launch latency (cold): %.3f us\n", us);
-    g_results.log("pcie", "kernel_launch_cold_us", us, "us");
+    printf("  First empty-kernel enqueue cost: %.3f us\n", us);
+    g_results.log("pcie", "kernel_first_enqueue_us", us, "us");
   }
 
   // Warm the context.
@@ -37,19 +37,19 @@ void benchmark_pcie() {
   }
   CUDA_CHECK(cudaDeviceSynchronize());
 
-  // Kernel launch latency (warm): average many launches.
+  // Warm empty-kernel enqueue cost (): average many launches.
   {
     const int reps = 1000;
-    auto t0 = std::chrono::high_resolution_clock::now();
+    auto t0 = std::chrono::steady_clock::now();
     for (int i = 0; i < reps; ++i) {
       kernel_empty<<<1, 1>>>();
     }
-    auto t1 = std::chrono::high_resolution_clock::now();
+    auto t1 = std::chrono::steady_clock::now();
     CUDA_CHECK(cudaGetLastError());
     CUDA_CHECK(cudaDeviceSynchronize());
     double us = cpu_us(t0, t1) / reps;
-    printf("  Kernel launch latency (warm, avg of %d): %.3f us\n", reps, us);
-    g_results.log("pcie", "kernel_launch_warm_us", us, "us");
+    printf("  Warm empty-kernel enqueue cost (avg of %d): %.3f us\n", reps, us);
+    g_results.log("pcie", "kernel_warm_enqueue_us", us, "us");
   }
 
   // PCIe bandwidth with pinned buffer.
@@ -67,11 +67,11 @@ void benchmark_pcie() {
   // Host-to-device bandwidth
   {
     const int reps = 10;
-    auto t0 = std::chrono::high_resolution_clock::now();
+    auto t0 = std::chrono::steady_clock::now();
     for (int i = 0; i < reps; ++i) {
       CUDA_CHECK(cudaMemcpy(d_buf, h_pinned, bytes, cudaMemcpyHostToDevice));
     }
-    auto t1 = std::chrono::high_resolution_clock::now();
+    auto t1 = std::chrono::steady_clock::now();
     CUDA_CHECK(cudaDeviceSynchronize());
     double us = cpu_us(t0, t1) / reps;
     double gibs = bandwidthGiB(bytes, us * 1e3);
@@ -82,11 +82,11 @@ void benchmark_pcie() {
   // Device-to-host bandwidth
   {
     const int reps = 10;
-    auto t0 = std::chrono::high_resolution_clock::now();
+    auto t0 = std::chrono::steady_clock::now();
     for (int i = 0; i < reps; ++i) {
       CUDA_CHECK(cudaMemcpy(h_pinned, d_buf, bytes, cudaMemcpyDeviceToHost));
     }
-    auto t1 = std::chrono::high_resolution_clock::now();
+    auto t1 = std::chrono::steady_clock::now();
     CUDA_CHECK(cudaDeviceSynchronize());
     double us = cpu_us(t0, t1) / reps;
     double gibs = bandwidthGiB(bytes, us * 1e3);
@@ -119,16 +119,16 @@ void benchmark_pcie() {
     CUDA_CHECK(cudaMallocManaged(&d_managed, sizeof(int)));
     *d_managed = 0;
     CUDA_CHECK(cudaDeviceSynchronize());
-    auto t0 = std::chrono::high_resolution_clock::now();
+    auto t0 = std::chrono::steady_clock::now();
     kernel_um_touch<<<1, 1>>>(d_managed);
     CUDA_CHECK(cudaGetLastError());
     CUDA_CHECK(cudaDeviceSynchronize());
-    auto t1 = std::chrono::high_resolution_clock::now();
+    auto t1 = std::chrono::steady_clock::now();
     um_fault_us = cpu_us(t0, t1);
-    printf("  Unified Memory first-touch latency: %.3f us\n", um_fault_us);
+    printf("  Unified Memory first-touch end-to-end time: %.3f us\n", um_fault_us);
     CUDA_CHECK(cudaFree(d_managed));
   }
-  g_results.log("pcie", "um_page_fault_latency_us", um_fault_us, "us");
+  g_results.log("pcie", "um_first_touch_end_to_end_us", um_fault_us, "us");
 }
 
 } // namespace cmb

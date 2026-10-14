@@ -8,16 +8,18 @@ namespace cmb {
 
 __global__ void kernel_global_atomic_add(int *counter, int iters) {
   for (int i = 0; i < iters; ++i) {
-    atomicAdd(counter, 1);
+    asm volatile("red.relaxed.gpu.global.add.u32 [%0], 1;" :: "l"(counter) : "memory");
   }
 }
 
 __global__ void kernel_shared_atomic_add(int *out, int iters) {
   __shared__ int counter;
-  counter = 0;
+  if (threadIdx.x == 0) counter = 0;
   __syncthreads();
   for (int i = 0; i < iters; ++i) {
-    atomicAdd(&counter, 1);
+    int old __attribute__((unused));
+    asm volatile("atom.shared.add.u32 %0, [%1], 1;" : "=r"(old)
+                 : "r"(static_cast<unsigned int>(__cvta_generic_to_shared(&counter))) : "memory");
   }
   __syncthreads();
   out[blockIdx.x] = counter;
@@ -25,11 +27,16 @@ __global__ void kernel_shared_atomic_add(int *out, int iters) {
 
 __global__ void kernel_global_atomic_latency(int *counter, int iters,
                                              unsigned int *cycles) {
+  int old = threadIdx.x;
   CMB_CLOCK_START();
+#pragma unroll 16
   for (int i = 0; i < iters; ++i) {
-    atomicAdd(counter, 1);
+    int delta = (old & 1) + 1;
+    asm volatile("atom.global.add.u32 %0, [%1], %2;"
+                 : "=r"(old) : "l"(counter), "r"(delta) : "memory");
   }
   CMB_CLOCK_STOP();
+  CMB_DEPENDENCY_GUARD(old);
   cycles[0] = t1 - t0;
 }
 
@@ -41,7 +48,7 @@ __global__ void kernel_global_atomic_cas_latency(int *counter, int iters,
     old = atomicCAS(counter, old, old + 1);
   }
   CMB_CLOCK_STOP();
-  if (old == 0xdeadbeef) cycles[0] = 0;
+  CMB_DEPENDENCY_GUARD(old);
   cycles[0] = t1 - t0;
 }
 
@@ -53,7 +60,7 @@ __global__ void kernel_global_atomic_exch_latency(int *counter, int iters,
     old = atomicExch(counter, old + i);
   }
   CMB_CLOCK_STOP();
-  if (old == 0xdeadbeef) cycles[0] = 0;
+  CMB_DEPENDENCY_GUARD(old);
   cycles[0] = t1 - t0;
 }
 
@@ -65,11 +72,11 @@ __global__ void kernel_global_atomic_min_latency(int *counter, int iters,
     old = atomicMin(counter, old - 1);
   }
   CMB_CLOCK_STOP();
-  if (old == 0xdeadbeef) cycles[0] = 0;
+  CMB_DEPENDENCY_GUARD(old);
   cycles[0] = t1 - t0;
 }
 
-// Block-level reduction latency via shared memory tree (proxy for `red.sync`).
+// Block-level shared memory tree reduction; this is not a red/redux instruction.
 __global__ void kernel_block_reduce_latency(int *data, int iters,
                                             unsigned int *cycles) {
   __shared__ int sdata[256];
@@ -106,7 +113,7 @@ __global__ void kernel_global_atomic_max_latency(int *counter, int iters,
     old = atomicMax(counter, old + 1);
   }
   CMB_CLOCK_STOP();
-  if (old == 0xdeadbeef) cycles[0] = 0;
+  CMB_DEPENDENCY_GUARD(old);
   cycles[0] = t1 - t0;
 }
 
@@ -126,8 +133,8 @@ static double measure_atomic_latency(void (*kernel)(int *, int, unsigned int *),
   CUDA_CHECK(cudaMemcpy(&h_cycles, d_cycles, sizeof(unsigned int),
                         cudaMemcpyDeviceToHost));
   double cyc = (double)h_cycles / iters;
-  double ns = cyc * 1e9 / info.clock_rate_khz;
-  printf("  Global %s latency: %.2f cycles (%.2f ns)\n", label, cyc, ns);
+  double ns = cyclesToNominalNs(cyc, info.clock_rate_khz);
+  printf("  Global %s latency: %.2f cycles (%.2f nominal ns)\n", label, cyc, ns);
 
   CUDA_CHECK(cudaFree(d_counter));
   CUDA_CHECK(cudaFree(d_cycles));
@@ -152,21 +159,25 @@ void benchmark_atomics() {
     timer.start();
     kernel_global_atomic_add<<<blocks, threads>>>(d_counter, iters);
     timer.stop();
+    CUDA_CHECK(cudaGetLastError());
     float ms = timer.elapsedMs();
 
     long long ops = (long long)blocks * threads * iters;
     double global_atomic_tput = ops / (ms * 1e-3) / 1e9;
-    printf("  Global atomicAdd throughput (contended): %.2f GOPS/s\n",
+    printf("  Global no-return RED.ADD update rate (contended): %.2f GOPS/s\n",
            global_atomic_tput);
-    g_results.log("atomics", "global_atomic_add_gops", global_atomic_tput,
+    g_results.log("atomics", "global_red_add_updates_gops", global_atomic_tput,
                   "GOPS/s");
+    int count;
+    CUDA_CHECK(cudaMemcpy(&count, d_counter, sizeof(int), cudaMemcpyDeviceToHost));
+    if (count != ops) { fprintf(stderr, "Global atomic result mismatch\n"); exit(EXIT_FAILURE); }
     CUDA_CHECK(cudaFree(d_counter));
   }
 
   // 2. Shared atomic throughput (per-block counter)
   {
     int *d_out;
-    CUDA_CHECK(cudaMalloc(&d_out, info.sm_count * sizeof(int)));
+    CUDA_CHECK(cudaMalloc(&d_out, info.sm_count * 4 * sizeof(int)));
 
     int iters = 1 << 12;
     int threads = 256;
@@ -176,13 +187,19 @@ void benchmark_atomics() {
     timer.start();
     kernel_shared_atomic_add<<<blocks, threads>>>(d_out, iters);
     timer.stop();
+    CUDA_CHECK(cudaGetLastError());
     float ms = timer.elapsedMs();
 
     long long ops = (long long)blocks * threads * iters;
     double shared_atomic_tput = ops / (ms * 1e-3) / 1e9;
-    printf("  Shared atomicAdd throughput: %.2f GOPS/s\n", shared_atomic_tput);
-    g_results.log("atomics", "shared_atomic_add_gops", shared_atomic_tput,
+    printf("  Shared constant-increment update rate: %.2f GOPS/s\n", shared_atomic_tput);
+    g_results.log("atomics", "shared_atomic_inc_updates_gops", shared_atomic_tput,
                   "GOPS/s");
+    std::vector<int> counts(blocks);
+    CUDA_CHECK(cudaMemcpy(counts.data(), d_out, blocks * sizeof(int), cudaMemcpyDeviceToHost));
+    for (int count : counts) if (count != threads * iters) {
+      fprintf(stderr, "Shared atomic result mismatch\n"); exit(EXIT_FAILURE);
+    }
     CUDA_CHECK(cudaFree(d_out));
   }
 
@@ -200,11 +217,11 @@ void benchmark_atomics() {
     CUDA_CHECK(cudaMemcpy(&h_cycles, d_cycles, sizeof(unsigned int),
                           cudaMemcpyDeviceToHost));
     double cyc = (double)h_cycles / (1 << 12);
-    double ns = cyc * 1e9 / info.clock_rate_khz;
-    printf("  Global atomicAdd latency: %.2f cycles (%.2f ns)\n", cyc, ns);
+    double ns = cyclesToNominalNs(cyc, info.clock_rate_khz);
+    printf("  Global atomicAdd latency: %.2f cycles (%.2f nominal ns)\n", cyc, ns);
     g_results.log("atomics", "global_atomic_add_latency_cyc", cyc, "cycles");
-    g_results.log("atomics", "global_atomic_add_latency_ns", ns, "ns");
-    g_results.log("instructions", "atoms_add_latency_cyc", cyc, "cycles");
+    g_results.log("atomics", "global_atomic_add_latency_ns", ns, "nominal ns");
+
 
     CUDA_CHECK(cudaFree(d_counter));
     CUDA_CHECK(cudaFree(d_cycles));
@@ -221,7 +238,7 @@ void benchmark_atomics() {
   g_results.log("atomics", "global_atomic_min_latency_cyc", min_lat, "cycles");
   g_results.log("atomics", "global_atomic_max_latency_cyc", max_lat, "cycles");
 
-  // Block-level reduction latency (shared-memory tree, proxy for red.sync).
+  // Block-level reduction latency (shared-memory tree).
   {
     int *d_data;
     unsigned int *d_cycles;
@@ -235,10 +252,10 @@ void benchmark_atomics() {
     CUDA_CHECK(cudaMemcpy(&h_cycles, d_cycles, sizeof(unsigned int),
                           cudaMemcpyDeviceToHost));
     double cyc = (double)h_cycles / iters;
-    double ns = cyc * 1e9 / info.clock_rate_khz;
-    printf("  Block reduce (tree) latency: %.2f cycles (%.2f ns)\n", cyc, ns);
+    double ns = cyclesToNominalNs(cyc, info.clock_rate_khz);
+    printf("  Block reduce (tree) latency: %.2f cycles (%.2f nominal ns)\n", cyc, ns);
     g_results.log("atomics", "block_reduce_latency_cyc", cyc, "cycles");
-    g_results.log("atomics", "block_reduce_latency_ns", ns, "ns");
+    g_results.log("atomics", "block_reduce_latency_ns", ns, "nominal ns");
     CUDA_CHECK(cudaFree(d_data));
     CUDA_CHECK(cudaFree(d_cycles));
   }

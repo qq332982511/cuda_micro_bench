@@ -8,18 +8,16 @@
 
 namespace cmb {
 
-static __device__ __forceinline__ unsigned int wallclock() {
-  unsigned int r;
-  asm volatile("mov.u32 %0, %%clock;" : "=r"(r));
-  return r;
-}
+static __device__ __forceinline__ unsigned int wallclock() { return clockVal(); }
 
 // Throughput-oriented co-issue kernels.  Saturate the SM and compare the
 // mixed IPC to the max single-pipe IPC.
 
 __global__ void kernel_fma_thp(int iters, float *out, unsigned int *cycles) {
   int tid = threadIdx.x;
-  float acc[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+  float acc[4];
+  #pragma unroll
+  for (int k = 0; k < 4; ++k) acc[k] = 1.0f + (tid + k) * 0.001f;
   __shared__ unsigned int s_t0, s_t1;
   __syncthreads();
   if (tid == 0) s_t0 = wallclock();
@@ -41,7 +39,9 @@ __global__ void kernel_fma_thp(int iters, float *out, unsigned int *cycles) {
 
 __global__ void kernel_imad_thp(int iters, int *out, unsigned int *cycles) {
   int tid = threadIdx.x;
-  int acc[4] = {1, 1, 1, 1};
+  int acc[4];
+  #pragma unroll
+  for (int k = 0; k < 4; ++k) acc[k] = 1 + tid + k;
   __shared__ unsigned int s_t0, s_t1;
   __syncthreads();
   if (tid == 0) s_t0 = wallclock();
@@ -64,8 +64,13 @@ __global__ void kernel_imad_thp(int iters, int *out, unsigned int *cycles) {
 __global__ void kernel_fma_imad_mixed_thp(int iters, float *fout, int *iout,
                                           unsigned int *cycles) {
   int tid = threadIdx.x;
-  float facc[4] = {1.0f, 1.0f, 1.0f, 1.0f};
-  int iacc[4] = {1, 1, 1, 1};
+  float facc[4];
+  int iacc[4];
+  #pragma unroll
+  for (int k = 0; k < 4; ++k) {
+    facc[k] = 1.0f + (tid + k) * 0.001f;
+    iacc[k] = 1 + tid + k;
+  }
   __shared__ unsigned int s_t0, s_t1;
   __syncthreads();
   if (tid == 0) s_t0 = wallclock();
@@ -92,7 +97,7 @@ __global__ void kernel_fma_imad_mixed_thp(int iters, float *fout, int *iout,
 }
 
 __global__ void kernel_fma_only(int iters, unsigned int *out) {
-  float a = 1.0f, b = 1.0001f;
+  float a = 1.0f + threadIdx.x * 0.001f, b = 1.0001f;
   __shared__ unsigned int s_t0, s_t1;
   __syncthreads();
   if (threadIdx.x == 0)
@@ -104,14 +109,14 @@ __global__ void kernel_fma_only(int iters, unsigned int *out) {
                  : "=f"(r) : "f"(a), "f"(b), "f"(a));
     a = r;
   }
+  out[threadIdx.x + 1] = clockAfter(a);
   __syncthreads();
   if (threadIdx.x == 0)
     s_t1 = wallclock();
   __syncthreads();
   if (threadIdx.x == 0)
     out[0] = s_t1 - s_t0;
-  if ((int)a == 0xdeadbeef)
-    out[0] = 0;
+
 }
 
 __global__ void kernel_imad_only(int iters, unsigned int *out) {
@@ -129,18 +134,18 @@ __global__ void kernel_imad_only(int iters, unsigned int *out) {
                  : "=r"(r) : "r"(a), "r"(m), "r"(n));
     a = r;
   }
+  out[threadIdx.x + 1] = clockAfter(a);
   __syncthreads();
   if (threadIdx.x == 0)
     s_t1 = wallclock();
   __syncthreads();
   if (threadIdx.x == 0)
     out[0] = s_t1 - s_t0;
-  if (a == 0xdeadbeef)
-    out[0] = 0;
+
 }
 
 __global__ void kernel_fma_imad_mixed(int iters, unsigned int *out) {
-  float fa = 1.0f, fb = 1.0001f;
+  float fa = 1.0f + threadIdx.x * 0.001f, fb = 1.0001f;
   int ia = 1;
   int m = threadIdx.x + 3;
   int n = blockIdx.x + 7;
@@ -159,20 +164,20 @@ __global__ void kernel_fma_imad_mixed(int iters, unsigned int *out) {
                  : "=r"(ir) : "r"(ia), "r"(m), "r"(n));
     ia = ir;
   }
+  out[threadIdx.x + 1] = clockAfter(__float_as_uint(fa) ^ static_cast<unsigned int>(ia));
   __syncthreads();
   if (threadIdx.x == 0)
     s_t1 = wallclock();
   __syncthreads();
   if (threadIdx.x == 0)
     out[0] = s_t1 - s_t0;
-  if ((int)fa == 0xdeadbeef || ia == 0xdeadbeef)
-    out[0] = 0;
+
 }
 
 static double measure_cycles(void (*kernel)(int, unsigned int *),
                              const char *label, int iters) {
   unsigned int *d_out;
-  CUDA_CHECK(cudaMalloc(&d_out, sizeof(unsigned int)));
+  CUDA_CHECK(cudaMalloc(&d_out, 33 * sizeof(unsigned int)));
   kernel<<<1, 32>>>(iters, d_out);
   CUDA_CHECK(cudaGetLastError());
   unsigned int h;
@@ -257,8 +262,8 @@ void benchmark_coissue() {
       imad_cyc = sum / blocks;
     }
 
-    double fma_ipc = fma_cyc > 0 ? fma_inst_per_block / fma_cyc : 0.0;
-    double imad_ipc = imad_cyc > 0 ? imad_inst_per_block / imad_cyc : 0.0;
+    double fma_ipc = fma_cyc > 0 ? fma_inst_per_block / 32.0 / fma_cyc : 0.0;
+    double imad_ipc = imad_cyc > 0 ? imad_inst_per_block / 32.0 / imad_cyc : 0.0;
 
     kernel_fma_imad_mixed_thp<<<blocks, threads>>>(iters, d_fout, d_iout,
                                                    d_cycles);
@@ -269,7 +274,7 @@ void benchmark_coissue() {
     double sum = 0.0;
     for (auto v : h) sum += v;
     double avg_cyc = sum / blocks;
-    double mixed_total_ipc = avg_cyc > 0 ? mixed_inst_per_block / avg_cyc : 0.0;
+    double mixed_total_ipc = avg_cyc > 0 ? mixed_inst_per_block / 32.0 / avg_cyc : 0.0;
 
     double max_single_ipc = std::max(fma_ipc, imad_ipc);
     double ratio = max_single_ipc > 0 ? mixed_total_ipc / max_single_ipc : 0.0;
@@ -279,10 +284,10 @@ void benchmark_coissue() {
     printf("    mixed total IPC: %.2f  (%.1f%% of max single)\n",
            mixed_total_ipc, ratio * 100.0);
 
-    g_results.log("coissue", "fma_only_throughput_ipc", fma_ipc, "inst/cycle");
-    g_results.log("coissue", "imad_only_throughput_ipc", imad_ipc, "inst/cycle");
+    g_results.log("coissue", "fma_only_throughput_ipc", fma_ipc, "warp-inst/cycle/SM");
+    g_results.log("coissue", "imad_only_throughput_ipc", imad_ipc, "warp-inst/cycle/SM");
     g_results.log("coissue", "fma_imad_mixed_total_throughput_ipc",
-                  mixed_total_ipc, "inst/cycle");
+                  mixed_total_ipc, "warp-inst/cycle/SM");
     g_results.log("coissue", "fma_imad_throughput_overlap_ratio",
                   ratio * 100.0, "%");
 

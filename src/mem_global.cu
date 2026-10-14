@@ -1,121 +1,76 @@
-#include "bench_common.h"
-#include "timer.h"
-#include "utils.h"
-#include <cuda_runtime.h>
-#include <cstdio>
+#include "memory_chase.h"
 
 namespace cmb {
-
-// Stream bandwidth: each thread reads/writes contiguous elements
-__global__ void kernel_stream_copy(const float *src, float *dst, int n,
-                                   int iters) {
-  int idx = blockIdx.x * blockDim.x + threadIdx.x;
-  int stride = blockDim.x * gridDim.x;
-  for (int i = idx; i < n; i += stride) {
-    float v = src[i];
-    for (int r = 0; r < iters; ++r) {
-      v = v + 1.0f;
-    }
-    dst[i] = v;
+// Fill with incompressible data so bandwidth is not an all-zero fast path.
+__global__ void kernel_init_stream(unsigned int *data, int n) {
+  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < n; i += blockDim.x * gridDim.x) {
+    unsigned int x = static_cast<unsigned int>(i) + 0x9e3779b9U;
+    x = (x ^ (x >> 16)) * 0x85ebca6bU;
+    x = (x ^ (x >> 13)) * 0xc2b2ae35U;
+    data[i] = x ^ (x >> 16);
   }
 }
-
-__global__ void kernel_latency_chase(const int *indices, int n, int iters,
-                                     unsigned int *out) {
-  int idx = 0;
-  CMB_CLOCK_START();
-  for (int r = 0; r < iters; ++r) {
-    int v;
-    // Volatile PTX load keeps the chase dependency chain; the final index is
-    // written to out[1] so the loop cannot be eliminated.
-    asm volatile("ld.global.b32 %0, [%1];" : "=r"(v) : "l"(indices + idx));
-    idx = v;
-  }
-  CMB_CLOCK_STOP();
-  out[0] = t1 - t0;
-  out[1] = (unsigned int)idx;
+__global__ void kernel_stream_copy(const uint4 *src, uint4 *dst, int n) {
+  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < n; i += blockDim.x * gridDim.x)
+    dst[i] = src[i];
 }
-
+__global__ void kernel_stream_read(const uint4 *src, unsigned int *out, int n) {
+  unsigned int a=0,b=0,c=0,d=0;
+  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < n; i += blockDim.x * gridDim.x) {
+    unsigned int x,y,z,w;
+    asm volatile("ld.global.cg.v4.u32 {%0,%1,%2,%3}, [%4];"
+                 : "=r"(x),"=r"(y),"=r"(z),"=r"(w) : "l"(src+i) : "memory");
+    a^=x; b^=y; c^=z; d^=w;
+  }
+  out[blockIdx.x * blockDim.x + threadIdx.x] = a^b^c^d;
+}
 void benchmark_global_memory() {
   DeviceInfo info = queryDevice(0);
-  printf("=== Global Memory Benchmarks ===\n");
-
-  // 1. Stream bandwidth with increasing working sets.  Use the largest size
-  // that fits as the reported value because it is least sensitive to launch
-  // and timer overhead; smaller sizes are printed for sanity checking.
-  const size_t sizes[] = {16 << 20, 64 << 20, 128 << 20, 256 << 20};
-  const int inner_iters = 1;
-  double reported_bw = 0.0;
-  size_t reported_bytes = 0;
-  for (size_t bytes : sizes) {
-    if (bytes > info.total_global_mem / 4)
-      continue;
-    int n = bytes / sizeof(float);
-    float *d_a, *d_b;
-    CUDA_CHECK(cudaMalloc(&d_a, bytes));
-    CUDA_CHECK(cudaMalloc(&d_b, bytes));
-    CUDA_CHECK(cudaMemset(d_a, 0, bytes));
-
-    int threads = 256;
-    int blocks = info.sm_count * 8;
-
-    // Warm-up launch and sync.
-    kernel_stream_copy<<<blocks, threads>>>(d_a, d_b, n, inner_iters);
+  printf("=== Global Memory Benchmarks (median of 5) ===\n");
+  const size_t sizes[] = {16ULL << 20, 64ULL << 20, 128ULL << 20, 256ULL << 20};
+  double reported_read=0,reported_copy=0;
+  size_t reported_bytes=0;
+  int blocks=info.sm_count*8, threads=256;
+  for(size_t bytes:sizes) {
+    if(bytes>info.total_global_mem/4) continue;
+    uint4 *a,*b;
+    unsigned int *sink;
+    CUDA_CHECK(cudaMalloc(&a,bytes)); CUDA_CHECK(cudaMalloc(&b,bytes));
+    CUDA_CHECK(cudaMalloc(&sink,blocks*threads*sizeof(unsigned int)));
+    kernel_init_stream<<<blocks,threads>>>(reinterpret_cast<unsigned int *>(a),bytes/4);
     CUDA_CHECK(cudaGetLastError());
-    CUDA_CHECK(cudaDeviceSynchronize());
-
-    GpuTimer timer;
-    timer.start();
-    kernel_stream_copy<<<blocks, threads>>>(d_a, d_b, n, inner_iters);
-    timer.stop();
-    CUDA_CHECK(cudaGetLastError());
-    float ms = timer.elapsedMs();
-
-    // Each element is read once and written once.
-    double total_bytes = bytes * 2.0;
-    double bw = bandwidthGiB(total_bytes, ms * 1e6);
-    printf("  Copy %6zu MB -> %.3f ms, BW: %.2f GiB/s\n",
-           bytes / (1024 * 1024), ms, bw);
-    if (bytes > reported_bytes) {
-      reported_bw = bw;
-      reported_bytes = bytes;
-    }
-
-    CUDA_CHECK(cudaFree(d_a));
-    CUDA_CHECK(cudaFree(d_b));
+    auto measure=[&](bool copy) {
+      std::vector<double> samples;
+      for(int r=0;r<6;r++) {
+        GpuTimer timer; timer.start();
+        if(copy) kernel_stream_copy<<<blocks,threads>>>(a,b,bytes/16);
+        else kernel_stream_read<<<blocks,threads>>>(a,sink,bytes/16);
+        CUDA_CHECK(cudaGetLastError()); timer.stop();
+        double ms=timer.elapsedMs();
+        if(r) samples.push_back(bandwidthGiB(bytes*(copy?2.0:1.0),ms*1e6));
+      }
+      std::sort(samples.begin(),samples.end()); return samples[2];
+    };
+    double copy_bw=measure(true),read_bw=measure(false);
+    printf("  %4zu MiB: copy %.2f GiB/s (read+write), read %.2f GiB/s\n",bytes>>20,copy_bw,read_bw);
+    reported_bytes=bytes; reported_copy=copy_bw; reported_read=read_bw;
+    CUDA_CHECK(cudaFree(a)); CUDA_CHECK(cudaFree(b)); CUDA_CHECK(cudaFree(sink));
   }
-  if (reported_bytes > 0) {
-    g_results.log("memory_dram", "copy_max_bw_gibps", reported_bw, "GiB/s");
-    // Also report in GB/s under the canonical memory section for the HTML report.
-    g_results.log("memory", "dram_read_bw_gbps", reported_bw * 1.073741824, "GB/s");
-  }
-
-  // 2. Pointer-chase latency
-  const int chase_size = 1 << 20; // 4 MB
-  int *d_indices;
-  CUDA_CHECK(cudaMalloc(&d_indices, chase_size * sizeof(int)));
-  // Build a random-ish linked list in array
-  std::vector<int> h_indices(chase_size);
-  for (int i = 0; i < chase_size; ++i)
-    h_indices[i] = (i + 64) % chase_size;
-  CUDA_CHECK(cudaMemcpy(d_indices, h_indices.data(), chase_size * sizeof(int),
-                        cudaMemcpyHostToDevice));
-
-  unsigned int *d_out;
-  CUDA_CHECK(cudaMalloc(&d_out, 2 * sizeof(unsigned int)));
-  kernel_latency_chase<<<1, 1>>>(d_indices, chase_size, 1 << 20, d_out);
-  CUDA_CHECK(cudaGetLastError());
-  unsigned int h_out[2];
-  CUDA_CHECK(cudaMemcpy(h_out, d_out, 2 * sizeof(unsigned int),
-                        cudaMemcpyDeviceToHost));
-  double lat_cyc = (double)h_out[0] / (1 << 20);
-  double lat_ns = lat_cyc * 1e9 / info.clock_rate_khz;
-  printf("  Pointer-chase latency: %.2f cycles (%.2f ns)\n", lat_cyc, lat_ns);
-  g_results.log("memory_dram", "pointer_chase_latency_ns", lat_ns, "ns");
-  g_results.log("memory", "dram_latency_cyc", lat_cyc, "cycles");
-
-  CUDA_CHECK(cudaFree(d_indices));
-  CUDA_CHECK(cudaFree(d_out));
+  g_results.log("memory_dram","read_bw_gibps",reported_read,"GiB/s");
+  g_results.log("memory_dram","copy_max_bw_gibps",reported_copy,"GiB/s");
+  g_results.log("memory","dram_read_bw_gbps",reported_read*1.073741824,"GB/s");
+  g_results.log("memory_dram","stream_working_set_bytes",reported_bytes,"bytes");
+  // Visit every 128-byte slot. Eight times L2 also exceeds L2 capacity
+  // when only the 32-byte sector containing each link is fetched.
+  size_t bytes=std::max<size_t>(256ULL<<20,static_cast<size_t>(info.l2_cache_size)*8);
+  bytes=std::min(bytes,info.total_global_mem/8);
+  double cyc=measureRandomChase<true>(bytes,false);
+  double ns=cyclesToNominalNs(cyc,info.clock_rate_khz);
+  printf("  DRAM random chase (.cg, %zu MiB): %.2f cycles (%.2f nominal ns)\n",bytes>>20,cyc,ns);
+  g_results.log("memory","dram_latency_cyc",cyc,"cycles");
+  g_results.log("memory_dram","pointer_chase_latency_ns",ns,"nominal ns");
+  g_results.log("memory_dram","chase_working_set_bytes",bytes,"bytes");
+  g_results.log("memory_dram","chase_loads_per_sample",bytes/128,"loads");
+  g_results.log("memory_dram","chase_min_sector_footprint_bytes",bytes/4,"bytes");
 }
-
 } // namespace cmb

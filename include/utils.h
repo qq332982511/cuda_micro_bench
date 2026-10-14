@@ -34,6 +34,7 @@ struct DeviceInfo {
   int regs_per_thread;
   size_t shared_mem_per_sm;
   size_t shared_mem_per_block;
+  size_t shared_mem_per_block_optin;
   size_t total_global_mem;
   int warp_size;
   int multi_processor_count;
@@ -59,15 +60,16 @@ inline DeviceInfo queryDevice(int dev = 0) {
   info.max_threads_per_block = prop.maxThreadsPerBlock;
   info.max_blocks_per_sm = prop.maxBlocksPerMultiProcessor;
   info.regs_per_sm = prop.regsPerMultiprocessor;
-  info.regs_per_thread = prop.regsPerBlock / prop.maxBlocksPerMultiProcessor;
+  info.regs_per_thread = 255; // architectural per-thread limit (CC 7.x+)
   info.shared_mem_per_sm = prop.sharedMemPerMultiprocessor;
   info.shared_mem_per_block = prop.sharedMemPerBlock;
+  info.shared_mem_per_block_optin = prop.sharedMemPerBlockOptin;
   info.total_global_mem = prop.totalGlobalMem;
   info.warp_size = prop.warpSize;
   info.multi_processor_count = prop.multiProcessorCount;
-  cudaDeviceGetAttribute(&info.clock_rate_khz, cudaDevAttrClockRate, dev);
-  cudaDeviceGetAttribute(&info.memory_clock_khz, cudaDevAttrMemoryClockRate,
-                         dev);
+  CUDA_CHECK(cudaDeviceGetAttribute(&info.clock_rate_khz, cudaDevAttrClockRate, dev));
+  CUDA_CHECK(cudaDeviceGetAttribute(&info.memory_clock_khz, cudaDevAttrMemoryClockRate,
+                         dev));
   info.mem_bus_width = prop.memoryBusWidth;
   info.l2_cache_size = prop.l2CacheSize;
   info.max_warps_per_sm = prop.maxThreadsPerMultiProcessor / prop.warpSize;
@@ -93,14 +95,15 @@ inline void printDeviceInfo(const DeviceInfo &info) {
   printf("Max Blocks/SM       : %d\n", info.max_blocks_per_sm);
   printf("Registers/SM        : %d\n", info.regs_per_sm);
   printf("Registers/Thread    : %d\n", info.regs_per_thread);
-  printf("Shared Memory/SM    : %zu KB\n", info.shared_mem_per_sm / 1024);
-  printf("Shared Memory/Block : %zu KB\n", info.shared_mem_per_block / 1024);
-  printf("Global Memory       : %.2f GB\n",
+  printf("Shared Memory/SM    : %zu KiB\n", info.shared_mem_per_sm / 1024);
+  printf("Shared/Block default: %zu KiB\n", info.shared_mem_per_block / 1024);
+  printf("Shared/Block opt-in : %zu KiB\n", info.shared_mem_per_block_optin / 1024);
+  printf("Global Memory       : %.2f GiB\n",
          info.total_global_mem / (1024.0 * 1024.0 * 1024.0));
-  printf("Core Clock          : %.3f GHz\n", info.clock_rate_khz / 1e6);
-  printf("Memory Clock        : %.3f GHz\n", info.memory_clock_khz / 1e6);
+  printf("Core Clock (nominal) : %.3f GHz\n", info.clock_rate_khz / 1e6);
+  printf("Memory Clock (CUDA)  : %.3f GHz\n", info.memory_clock_khz / 1e6);
   printf("Memory Bus Width    : %d bit\n", info.mem_bus_width);
-  printf("L2 Cache Size       : %d KB\n", info.l2_cache_size / 1024);
+  printf("L2 Cache Size       : %d KiB\n", info.l2_cache_size / 1024);
   printf("\n");
 }
 

@@ -21,9 +21,8 @@ __global__ void kernel_shfl_latency(unsigned int *cycles, int iters) {
     src = r;
   }
   CMB_CLOCK_STOP();
-  if (src == 0xdeadbeef)
-    t1 = clockVal();
-  cycles[0] = t1 - t0;
+  CMB_DEPENDENCY_GUARD(src);
+  if (threadIdx.x == 0) cycles[0] = t1 - t0;
 }
 
 // Throughput: independent shfl chains (ILP=4) spread over many warps.
@@ -72,10 +71,10 @@ void benchmark_warp_shuffle() {
     CUDA_CHECK(cudaMemcpy(&h_cycles, d_cycles, sizeof(unsigned int),
                           cudaMemcpyDeviceToHost));
     double cyc = (double)h_cycles / iters;
-    double ns = cyc * 1e9 / info.clock_rate_khz;
-    printf("  shfl.sync.idx latency: %.2f cycles (%.2f ns)\n", cyc, ns);
+    double ns = cyclesToNominalNs(cyc, info.clock_rate_khz);
+    printf("  shfl.sync.idx latency: %.2f cycles (%.2f nominal ns)\n", cyc, ns);
     g_results.log("warp_shuffle", "shfl_idx_latency_cycles", cyc, "cycles");
-    g_results.log("warp_shuffle", "shfl_idx_latency_ns", ns, "ns");
+    g_results.log("warp_shuffle", "shfl_idx_latency_ns", ns, "nominal ns");
     CUDA_CHECK(cudaFree(d_cycles));
   }
 
@@ -97,10 +96,10 @@ void benchmark_warp_shuffle() {
     float ms = timer.elapsedMs();
     CUDA_CHECK(cudaGetLastError());
 
-    long long insts = (long long)blocks * threads * iters * 4;
+    long long insts = (long long)blocks * (threads / 32) * iters * 4;
     double ginst = insts / (ms * 1e-3) / 1e9;
-    printf("  shfl.sync.idx throughput: %.2f Ginst/s\n", ginst);
-    g_results.log("warp_shuffle", "shfl_idx_throughput_Ginst_s", ginst, "Ginst/s");
+    printf("  shfl.sync.idx throughput: %.2f Gwarp-inst/s\n", ginst);
+    g_results.log("warp_shuffle", "shfl_idx_throughput_Gwarp_inst_s", ginst, "Gwarp-inst/s");
     CUDA_CHECK(cudaFree(d_out));
   }
 }

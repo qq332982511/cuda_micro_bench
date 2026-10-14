@@ -67,7 +67,7 @@ static void usage(const char *name) {
   printf("Options:\n");
   printf("  --device     Device / SM info\n");
   printf("  --topology   Extended topology probes (SMSP, warp scaling)\n");
-  printf("  --pipeline   Pipeline depth / ILP sweeps\n");
+  printf("  --pipeline   Dependency / ILP sweeps\n");
   printf("  --memory     Global memory bandwidth and latency\n");
   printf("  --memory-more Cache line, coalescing, async-copy probes\n");
   printf("  --shared     Shared memory bandwidth, latency and bank conflicts\n");
@@ -84,7 +84,7 @@ static void usage(const char *name) {
   printf("  --shuffle    Warp shuffle latency and throughput\n");
   printf("  --collectives Warp collectives (vote/elect/redux) and divergence\n");
   printf("  --barriers   Barrier latencies\n");
-  printf("  --instructions Extended instruction latency (IADD3, IMAD, LEA, IDP4A)\n");
+  printf("  --instructions Extended instruction latency (PTX ADD, IMAD, address arithmetic, IDP4A)\n");
   printf("  --more-insn  More instruction latencies (logic/shift/prmt/div/conversions)\n");
   printf("  --tensor-ext Extended Tensor Core (FP16/BF16/FP8/INT8 MMA)\n");
   printf("  --pcie       PCIe bandwidth and kernel launch latency\n");

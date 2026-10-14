@@ -1,0 +1,29 @@
+mkdir -p build
+/usr/local/cuda/bin/nvcc -O3 -std=c++17 -arch=native -Iinclude -MMD -MP -dc src/main.cu -o build/main.o
+/usr/local/cuda/bin/nvcc -O3 -std=c++17 -arch=native -Iinclude -MMD -MP -dc src/result_logger.cu -o build/result_logger.o
+/usr/local/cuda/bin/nvcc -O3 -std=c++17 -arch=native -Iinclude -MMD -MP -dc src/device_info.cu -o build/device_info.o
+/usr/local/cuda/bin/nvcc -O3 -std=c++17 -arch=native -Iinclude -MMD -MP -dc src/topology_extended.cu -o build/topology_extended.o
+/usr/local/cuda/bin/nvcc -O3 -std=c++17 -arch=native -Iinclude -MMD -MP -dc src/pipeline_depth.cu -o build/pipeline_depth.o
+/usr/local/cuda/bin/nvcc -O3 -std=c++17 -arch=native -Iinclude -MMD -MP -dc src/instructions_more.cu -o build/instructions_more.o
+/usr/local/cuda/bin/nvcc -O3 -std=c++17 -arch=native -Iinclude -MMD -MP -dc src/warp_collectives.cu -o build/warp_collectives.o
+/usr/local/cuda/bin/nvcc -O3 -std=c++17 -arch=native -Iinclude -MMD -MP -dc src/tensor_more.cu -o build/tensor_more.o
+/usr/local/cuda/bin/nvcc -O3 -std=c++17 -arch=native -Iinclude -MMD -MP -dc src/memory_more.cu -o build/memory_more.o
+/usr/local/cuda/bin/nvcc -O3 -std=c++17 -arch=native -Iinclude -MMD -MP -dc src/coissue.cu -o build/coissue.o
+/usr/local/cuda/bin/nvcc -O3 -std=c++17 -arch=native -Iinclude -MMD -MP -dc src/tma.cu -o build/tma.o
+/usr/local/cuda/bin/nvcc -O3 -std=c++17 -arch=native -Iinclude -MMD -MP -dc src/instruction_throughput.cu -o build/instruction_throughput.o
+/usr/local/cuda/bin/nvcc -O3 -std=c++17 -arch=native -Iinclude -MMD -MP -dc src/mem_global.cu -o build/mem_global.o
+/usr/local/cuda/bin/nvcc -O3 -std=c++17 -arch=native -Iinclude -MMD -MP -dc src/mem_shared.cu -o build/mem_shared.o
+/usr/local/cuda/bin/nvcc -O3 -std=c++17 -arch=native -Iinclude -MMD -MP -dc src/mem_cache.cu -o build/mem_cache.o
+/usr/local/cuda/bin/nvcc -O3 -std=c++17 -arch=native -Iinclude -MMD -MP -dc src/memory_chase.cu -o build/memory_chase.o
+/usr/local/cuda/bin/nvcc -O3 -std=c++17 -arch=native -Iinclude -MMD -MP -dc src/compute_throughput.cu -o build/compute_throughput.o
+/usr/local/cuda/bin/nvcc -O3 -std=c++17 -arch=native -Iinclude -MMD -MP -dc src/compute_latency.cu -o build/compute_latency.o
+/usr/local/cuda/bin/nvcc -O3 -std=c++17 -arch=native -Iinclude -MMD -MP -dc src/atomics.cu -o build/atomics.o
+/usr/local/cuda/bin/nvcc -O3 -std=c++17 -arch=native -Iinclude -MMD -MP -dc src/tensor_core.cu -o build/tensor_core.o
+/usr/local/cuda/bin/nvcc -O3 -std=c++17 -arch=native -Iinclude -MMD -MP -dc src/occupancy.cu -o build/occupancy.o
+/usr/local/cuda/bin/nvcc -O3 -std=c++17 -arch=native -Iinclude -MMD -MP -dc src/warp_shuffle.cu -o build/warp_shuffle.o
+/usr/local/cuda/bin/nvcc -O3 -std=c++17 -arch=native -Iinclude -MMD -MP -dc src/barriers.cu -o build/barriers.o
+/usr/local/cuda/bin/nvcc -O3 -std=c++17 -arch=native -Iinclude -MMD -MP -dc src/instructions_extended.cu -o build/instructions_extended.o
+/usr/local/cuda/bin/nvcc -O3 -std=c++17 -arch=native -Iinclude -MMD -MP -dc src/tensor_core_extended.cu -o build/tensor_core_extended.o
+/usr/local/cuda/bin/nvcc -O3 -std=c++17 -arch=native -Iinclude -MMD -MP -dc src/pcie.cu -o build/pcie.o
+/usr/local/cuda/bin/nvcc -O3 -std=c++17 -arch=native -Iinclude -MMD -MP -dc src/cluster.cu -o build/cluster.o
+/usr/local/cuda/bin/nvcc -O3 -std=c++17 -arch=native -Iinclude build/main.o build/result_logger.o build/device_info.o build/topology_extended.o build/pipeline_depth.o build/instructions_more.o build/warp_collectives.o build/tensor_more.o build/memory_more.o build/coissue.o build/tma.o build/instruction_throughput.o build/mem_global.o build/mem_shared.o build/mem_cache.o build/memory_chase.o build/compute_throughput.o build/compute_latency.o build/atomics.o build/tensor_core.o build/occupancy.o build/warp_shuffle.o build/barriers.o build/instructions_extended.o build/tensor_core_extended.o build/pcie.o build/cluster.o -o cuda_micro_bench -lcuda

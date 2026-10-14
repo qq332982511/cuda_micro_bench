@@ -1,0 +1,1158 @@
+{
+  "device": "NVIDIA GeForce RTX 5060 Ti",
+  "architecture": "12.0",
+  "sm_count": 36,
+  "clock_khz": 2632000,
+  "memory_clock_khz": 14001000,
+  "memory_bus_width_bits": 128,
+  "results": {
+    "atomics": {
+      "block_reduce_latency_cyc": {
+        "value": 718.098633,
+        "unit": "cycles"
+      },
+      "block_reduce_latency_ns": {
+        "value": 272.833827,
+        "unit": "nominal ns"
+      },
+      "global_atomic_add_latency_cyc": {
+        "value": 381.666260,
+        "unit": "cycles"
+      },
+      "global_atomic_add_latency_ns": {
+        "value": 145.009977,
+        "unit": "nominal ns"
+      },
+      "global_atomic_cas_latency_cyc": {
+        "value": 371.704590,
+        "unit": "cycles"
+      },
+      "global_atomic_exch_latency_cyc": {
+        "value": 370.683105,
+        "unit": "cycles"
+      },
+      "global_atomic_max_latency_cyc": {
+        "value": 370.417236,
+        "unit": "cycles"
+      },
+      "global_atomic_min_latency_cyc": {
+        "value": 370.435547,
+        "unit": "cycles"
+      },
+      "global_red_add_updates_gops": {
+        "value": 74.950635,
+        "unit": "GOPS/s"
+      },
+      "shared_atomic_inc_updates_gops": {
+        "value": 1103.764162,
+        "unit": "GOPS/s"
+      }
+    },
+    "barriers": {
+      "converged_syncwarp_loop_cycles": {
+        "value": 1.826660,
+        "unit": "cycles"
+      },
+      "fence_cta_cycles": {
+        "value": 10.786865,
+        "unit": "cycles"
+      },
+      "fence_gpu_cycles": {
+        "value": 382.722412,
+        "unit": "cycles"
+      },
+      "fence_sys_cycles": {
+        "value": 948.140869,
+        "unit": "cycles"
+      },
+      "mbarrier_cycles": {
+        "value": 65.033691,
+        "unit": "cycles"
+      },
+      "mbarrier_ns": {
+        "value": 24.708849,
+        "unit": "nominal ns"
+      },
+      "named_barrier_cycles": {
+        "value": 14.673584,
+        "unit": "cycles"
+      },
+      "named_barrier_ns": {
+        "value": 5.575070,
+        "unit": "nominal ns"
+      },
+      "syncthreads_1warp_cycles": {
+        "value": 14.673584,
+        "unit": "cycles"
+      },
+      "syncthreads_1warp_ns": {
+        "value": 5.575070,
+        "unit": "nominal ns"
+      },
+      "syncthreads_full_cycles": {
+        "value": 28.670166,
+        "unit": "cycles"
+      },
+      "syncthreads_full_ns": {
+        "value": 10.892920,
+        "unit": "nominal ns"
+      },
+      "syncwarp_ns": {
+        "value": 0.694020,
+        "unit": "nominal ns"
+      }
+    },
+    "clock": {
+      "core_clock_mhz": {
+        "value": 2632.000000,
+        "unit": "MHz"
+      },
+      "memory_clock_mhz": {
+        "value": 14001.000000,
+        "unit": "MHz"
+      }
+    },
+    "cluster": {
+      "cluster_barrier_2block_cyc": {
+        "value": 382.455566,
+        "unit": "cycles"
+      },
+      "cluster_barrier_max_cyc": {
+        "value": 384.168701,
+        "unit": "cycles"
+      },
+      "dsmem_read_latency_cyc": {
+        "value": 211.003174,
+        "unit": "cycles"
+      },
+      "launch_supported": {
+        "value": 1.000000,
+        "unit": "bool"
+      },
+      "launch_test_size": {
+        "value": 8.000000,
+        "unit": "blocks"
+      },
+      "max_cluster_size": {
+        "value": 8.000000,
+        "unit": "blocks"
+      }
+    },
+    "coissue": {
+      "fma_imad_mixed_cyc_per_pair": {
+        "value": 4.654846,
+        "unit": "cycles"
+      },
+      "fma_imad_mixed_total_throughput_ipc": {
+        "value": 3.898957,
+        "unit": "warp-inst/cycle/SM"
+      },
+      "fma_imad_overlap_ratio": {
+        "value": 98.606743,
+        "unit": "%"
+      },
+      "fma_imad_throughput_overlap_ratio": {
+        "value": 102.757445,
+        "unit": "%"
+      },
+      "fma_only_cyc_per_op": {
+        "value": 4.463989,
+        "unit": "cycles"
+      },
+      "fma_only_throughput_ipc": {
+        "value": 3.794330,
+        "unit": "warp-inst/cycle/SM"
+      },
+      "imad_only_cyc_per_op": {
+        "value": 4.592651,
+        "unit": "cycles"
+      },
+      "imad_only_throughput_ipc": {
+        "value": 1.997496,
+        "unit": "warp-inst/cycle/SM"
+      }
+    },
+    "instructions": {
+      "add_u64_throughput_ipc": {
+        "value": 1.372640,
+        "unit": "warp-PTX-ops/nominal-cycle/SM"
+      },
+      "address_arithmetic_throughput_ipc": {
+        "value": 2.267732,
+        "unit": "warp-PTX-ops/nominal-cycle/SM"
+      },
+      "cos_latency_cyc": {
+        "value": 22.071411,
+        "unit": "cycles"
+      },
+      "cos_throughput_ipc": {
+        "value": 0.546645,
+        "unit": "warp-PTX-ops/nominal-cycle/SM"
+      },
+      "dfma_latency_cyc": {
+        "value": 63.540100,
+        "unit": "cycles"
+      },
+      "div_u32_throughput_ipc": {
+        "value": 0.263511,
+        "unit": "warp-PTX-ops/nominal-cycle/SM"
+      },
+      "ex2_bounded_chain_cyc": {
+        "value": 24.040405,
+        "unit": "cycles"
+      },
+      "ex2_bounded_sequence_throughput": {
+        "value": 0.546405,
+        "unit": "warp-sequences/nominal-cycle/SM"
+      },
+      "fadd_latency_cyc": {
+        "value": 4.295288,
+        "unit": "cycles"
+      },
+      "ffma_latency_cyc": {
+        "value": 78.644897,
+        "unit": "cycles"
+      },
+      "fma_bf16x2_throughput_ipc": {
+        "value": 2.142831,
+        "unit": "warp-PTX-ops/nominal-cycle/SM"
+      },
+      "fma_f16x2_throughput_ipc": {
+        "value": 2.142831,
+        "unit": "warp-PTX-ops/nominal-cycle/SM"
+      },
+      "fma_f32x2_throughput_ipc": {
+        "value": 1.240766,
+        "unit": "warp-PTX-ops/nominal-cycle/SM"
+      },
+      "fp32_add_gflops": {
+        "value": 10702.788527,
+        "unit": "GFLOP/s"
+      },
+      "fp32_add_latency_cyc": {
+        "value": 4.295288,
+        "unit": "cycles"
+      },
+      "fp32_add_throughput_ipc": {
+        "value": 1.856524,
+        "unit": "warp-PTX-ops/nominal-cycle/SM"
+      },
+      "fp32_fma_gflops": {
+        "value": 23116.188921,
+        "unit": "GFLOP/s"
+      },
+      "fp32_fma_latency_cyc": {
+        "value": 78.644897,
+        "unit": "cycles"
+      },
+      "fp32_fma_throughput_ipc": {
+        "value": 1.856524,
+        "unit": "warp-PTX-ops/nominal-cycle/SM"
+      },
+      "fp32_mul_gflops": {
+        "value": 11632.892346,
+        "unit": "GFLOP/s"
+      },
+      "fp32_mul_latency_cyc": {
+        "value": 4.295288,
+        "unit": "cycles"
+      },
+      "fp32_mul_throughput_ipc": {
+        "value": 1.851554,
+        "unit": "warp-PTX-ops/nominal-cycle/SM"
+      },
+      "fp64_add_gflops": {
+        "value": 169.663345,
+        "unit": "GFLOP/s"
+      },
+      "fp64_add_latency_cyc": {
+        "value": 63.446045,
+        "unit": "cycles"
+      },
+      "fp64_add_throughput_ipc": {
+        "value": 0.053862,
+        "unit": "warp-PTX-ops/nominal-cycle/SM"
+      },
+      "iadd_throughput_ipc": {
+        "value": 1.882632,
+        "unit": "warp-PTX-ops/nominal-cycle/SM"
+      },
+      "idp4a_throughput_ipc": {
+        "value": 2.021079,
+        "unit": "warp-PTX-ops/nominal-cycle/SM"
+      },
+      "imad_throughput_ipc": {
+        "value": 2.030970,
+        "unit": "warp-PTX-ops/nominal-cycle/SM"
+      },
+      "int32_add_gops": {
+        "value": 5201.699820,
+        "unit": "GOPS/s"
+      },
+      "int32_add_latency_cyc": {
+        "value": 5.200745,
+        "unit": "cycles"
+      },
+      "int32_add_throughput_ipc": {
+        "value": 1.710614,
+        "unit": "warp-PTX-ops/nominal-cycle/SM"
+      },
+      "int32_mul_gops": {
+        "value": 6320.953955,
+        "unit": "GOPS/s"
+      },
+      "int32_mul_latency_cyc": {
+        "value": 4.233765,
+        "unit": "cycles"
+      },
+      "int32_mul_throughput_ipc": {
+        "value": 2.030970,
+        "unit": "warp-PTX-ops/nominal-cycle/SM"
+      },
+      "ldg_throughput_ipc": {
+        "value": 1.588649,
+        "unit": "warp-PTX-ops/nominal-cycle/SM"
+      },
+      "lg2_bounded_chain_cyc": {
+        "value": 24.040344,
+        "unit": "cycles"
+      },
+      "lg2_bounded_sequence_throughput": {
+        "value": 0.545615,
+        "unit": "warp-sequences/nominal-cycle/SM"
+      },
+      "lop3_throughput_ipc": {
+        "value": 2.030639,
+        "unit": "warp-PTX-ops/nominal-cycle/SM"
+      },
+      "mufu_rsq_latency_cyc": {
+        "value": 18.008911,
+        "unit": "cycles"
+      },
+      "mul_u64_throughput_ipc": {
+        "value": 0.499312,
+        "unit": "warp-PTX-ops/nominal-cycle/SM"
+      },
+      "prmt_throughput_ipc": {
+        "value": 2.034289,
+        "unit": "warp-PTX-ops/nominal-cycle/SM"
+      },
+      "rcp_latency_cyc": {
+        "value": 23.007629,
+        "unit": "cycles"
+      },
+      "rcp_throughput_ipc": {
+        "value": 0.545376,
+        "unit": "warp-PTX-ops/nominal-cycle/SM"
+      },
+      "rsqrt_gops": {
+        "value": 1631.883789,
+        "unit": "GOP/s"
+      },
+      "rsqrt_latency_cyc": {
+        "value": 18.008911,
+        "unit": "cycles"
+      },
+      "rsqrt_throughput_ipc": {
+        "value": 0.543756,
+        "unit": "warp-PTX-ops/nominal-cycle/SM"
+      },
+      "shl_var_throughput_ipc": {
+        "value": 2.052060,
+        "unit": "warp-PTX-ops/nominal-cycle/SM"
+      },
+      "sin_gops": {
+        "value": 1621.787981,
+        "unit": "GOP/s"
+      },
+      "sin_latency_cyc": {
+        "value": 22.071411,
+        "unit": "cycles"
+      },
+      "sin_throughput_ipc": {
+        "value": 0.545448,
+        "unit": "warp-PTX-ops/nominal-cycle/SM"
+      },
+      "sts_throughput_ipc": {
+        "value": 0.514000,
+        "unit": "warp-PTX-ops/nominal-cycle/SM"
+      },
+      "tanh_latency_cyc": {
+        "value": 18.008850,
+        "unit": "cycles"
+      },
+      "tanh_throughput_ipc": {
+        "value": 0.545687,
+        "unit": "warp-PTX-ops/nominal-cycle/SM"
+      },
+      "vadd2_throughput_ipc": {
+        "value": 1.012265,
+        "unit": "warp-PTX-ops/nominal-cycle/SM"
+      },
+      "vadd4_throughput_ipc": {
+        "value": 1.441789,
+        "unit": "warp-PTX-ops/nominal-cycle/SM"
+      }
+    },
+    "instructions_extended": {
+      "address_sequence_latency_cycles": {
+        "value": 23.007568,
+        "unit": "cycles"
+      },
+      "iadd_latency_cycles": {
+        "value": 5.200745,
+        "unit": "cycles"
+      },
+      "idp4a_latency_cycles": {
+        "value": 4.296143,
+        "unit": "cycles"
+      },
+      "imad_latency_cycles": {
+        "value": 4.389709,
+        "unit": "cycles"
+      }
+    },
+    "instructions_more": {
+      "add_u64_latency_cyc": {
+        "value": 23.028564,
+        "unit": "cycles"
+      },
+      "cvt_f32_f64_roundtrip_cyc": {
+        "value": 108.029541,
+        "unit": "cycles"
+      },
+      "cvt_f32_s32_roundtrip_add_cyc": {
+        "value": 36.028809,
+        "unit": "cycles"
+      },
+      "cvt_f32_u32_roundtrip_add_cyc": {
+        "value": 36.029053,
+        "unit": "cycles"
+      },
+      "cvt_u64_u32_roundtrip_add_cyc": {
+        "value": 23.030273,
+        "unit": "cycles"
+      },
+      "div_u32_plus_add_latency_cyc": {
+        "value": 69.207031,
+        "unit": "cycles"
+      },
+      "fma_bf16x2_latency_cyc": {
+        "value": 23.031006,
+        "unit": "cycles"
+      },
+      "fma_f16x2_latency_cyc": {
+        "value": 23.030762,
+        "unit": "cycles"
+      },
+      "fma_f32x2_latency_cyc": {
+        "value": 23.037109,
+        "unit": "cycles"
+      },
+      "lop3_latency_cyc": {
+        "value": 23.030518,
+        "unit": "cycles"
+      },
+      "mul_u64_latency_cyc": {
+        "value": 25.030029,
+        "unit": "cycles"
+      },
+      "prmt_latency_cyc": {
+        "value": 23.030518,
+        "unit": "cycles"
+      },
+      "shl_const_latency_cyc": {
+        "value": 23.027344,
+        "unit": "cycles"
+      },
+      "shl_var_latency_cyc": {
+        "value": 23.027588,
+        "unit": "cycles"
+      },
+      "vadd2_latency_cyc": {
+        "value": 23.030273,
+        "unit": "cycles"
+      },
+      "vadd4_latency_cyc": {
+        "value": 23.030273,
+        "unit": "cycles"
+      }
+    },
+    "memory": {
+      "dram_latency_cyc": {
+        "value": 902.482600,
+        "unit": "cycles"
+      },
+      "dram_read_bw_gbps": {
+        "value": 420.650275,
+        "unit": "GB/s"
+      },
+      "l1_latency_cyc": {
+        "value": 44.032005,
+        "unit": "cycles"
+      },
+      "l2_latency_cyc": {
+        "value": 452.935997,
+        "unit": "cycles"
+      },
+      "shared_memory_latency_cyc": {
+        "value": 28.006531,
+        "unit": "cycles"
+      }
+    },
+    "memory_cache": {
+      "l1_chase_128_kb_cycles": {
+        "value": 282.584717,
+        "unit": "cycles/access"
+      },
+      "l1_chase_16_kb_cycles": {
+        "value": 44.032005,
+        "unit": "cycles/access"
+      },
+      "l1_chase_256_kb_cycles": {
+        "value": 344.329620,
+        "unit": "cycles/access"
+      },
+      "l1_chase_32_kb_cycles": {
+        "value": 44.032005,
+        "unit": "cycles/access"
+      },
+      "l1_chase_4_kb_cycles": {
+        "value": 44.032005,
+        "unit": "cycles/access"
+      },
+      "l1_chase_64_kb_cycles": {
+        "value": 44.032005,
+        "unit": "cycles/access"
+      },
+      "l1_chase_8_kb_cycles": {
+        "value": 44.032005,
+        "unit": "cycles/access"
+      },
+      "l2_chase_working_set_bytes": {
+        "value": 8388608.000000,
+        "unit": "bytes"
+      }
+    },
+    "memory_dram": {
+      "chase_loads_per_sample": {
+        "value": 2097152.000000,
+        "unit": "loads"
+      },
+      "chase_min_sector_footprint_bytes": {
+        "value": 67108864.000000,
+        "unit": "bytes"
+      },
+      "chase_working_set_bytes": {
+        "value": 268435456.000000,
+        "unit": "bytes"
+      },
+      "copy_max_bw_gibps": {
+        "value": 353.330913,
+        "unit": "GiB/s"
+      },
+      "pointer_chase_latency_ns": {
+        "value": 342.888526,
+        "unit": "nominal ns"
+      },
+      "read_bw_gibps": {
+        "value": 391.761097,
+        "unit": "GiB/s"
+      },
+      "stream_working_set_bytes": {
+        "value": 268435456.000000,
+        "unit": "bytes"
+      }
+    },
+    "memory_more": {
+      "async_copy_16b_latency_cyc": {
+        "value": 58.243408,
+        "unit": "cycles"
+      },
+      "coalesce_stride_128_bytes_cyc": {
+        "value": 199.643555,
+        "unit": "cycles"
+      },
+      "coalesce_stride_16_bytes_cyc": {
+        "value": 268.071350,
+        "unit": "cycles"
+      },
+      "coalesce_stride_32_bytes_cyc": {
+        "value": 188.494751,
+        "unit": "cycles"
+      },
+      "coalesce_stride_4_bytes_cyc": {
+        "value": 289.184387,
+        "unit": "cycles"
+      },
+      "coalesce_stride_64_bytes_cyc": {
+        "value": 192.694824,
+        "unit": "cycles"
+      },
+      "coalesce_stride_8_bytes_cyc": {
+        "value": 248.823242,
+        "unit": "cycles"
+      },
+      "l1_per_warp_bw_bytes_per_cyc": {
+        "value": 24.816641,
+        "unit": "B/cyc"
+      },
+      "l1_per_warp_bw_gibps": {
+        "value": 60.831569,
+        "unit": "nominal GiB/s"
+      },
+      "l2_aggregate_bw_gibps": {
+        "value": 2050.166289,
+        "unit": "GiB/s"
+      },
+      "stride_latency_128_bytes_cyc": {
+        "value": 179.550781,
+        "unit": "cycles"
+      },
+      "stride_latency_16_bytes_cyc": {
+        "value": 168.351135,
+        "unit": "cycles"
+      },
+      "stride_latency_256_bytes_cyc": {
+        "value": 173.810547,
+        "unit": "cycles"
+      },
+      "stride_latency_32_bytes_cyc": {
+        "value": 169.226440,
+        "unit": "cycles"
+      },
+      "stride_latency_4_bytes_cyc": {
+        "value": 122.920959,
+        "unit": "cycles"
+      },
+      "stride_latency_64_bytes_cyc": {
+        "value": 170.279297,
+        "unit": "cycles"
+      },
+      "stride_latency_8_bytes_cyc": {
+        "value": 151.777832,
+        "unit": "cycles"
+      }
+    },
+    "memory_shared": {
+      "bandwidth_gibps": {
+        "value": 12276.834155,
+        "unit": "GiB/s"
+      },
+      "bank_conflict_stride_16_cycles": {
+        "value": 58.006531,
+        "unit": "cycles/warp-load"
+      },
+      "bank_conflict_stride_17_cycles": {
+        "value": 28.006531,
+        "unit": "cycles/warp-load"
+      },
+      "bank_conflict_stride_1_cycles": {
+        "value": 28.006531,
+        "unit": "cycles/warp-load"
+      },
+      "bank_conflict_stride_2_cycles": {
+        "value": 30.006531,
+        "unit": "cycles/warp-load"
+      },
+      "bank_conflict_stride_32_cycles": {
+        "value": 90.006531,
+        "unit": "cycles/warp-load"
+      },
+      "latency_cycles": {
+        "value": 28.006531,
+        "unit": "cycles"
+      }
+    },
+    "occupancy": {
+      "max_blocks_per_sm_block_1024": {
+        "value": 1.000000,
+        "unit": "blocks"
+      },
+      "max_blocks_per_sm_block_128": {
+        "value": 12.000000,
+        "unit": "blocks"
+      },
+      "max_blocks_per_sm_block_256": {
+        "value": 6.000000,
+        "unit": "blocks"
+      },
+      "max_blocks_per_sm_block_512": {
+        "value": 3.000000,
+        "unit": "blocks"
+      },
+      "max_blocks_per_sm_block_64": {
+        "value": 24.000000,
+        "unit": "blocks"
+      }
+    },
+    "pcie": {
+      "device_count": {
+        "value": 1.000000,
+        "unit": ""
+      },
+      "dtoh_bandwidth_GiB_s": {
+        "value": 24.864072,
+        "unit": "GiB/s"
+      },
+      "htod_bandwidth_GiB_s": {
+        "value": 24.954970,
+        "unit": "GiB/s"
+      },
+      "kernel_first_enqueue_us": {
+        "value": 33.203000,
+        "unit": "us"
+      },
+      "kernel_warm_enqueue_us": {
+        "value": 2.545718,
+        "unit": "us"
+      },
+      "p2p_available": {
+        "value": 0.000000,
+        "unit": "bool"
+      },
+      "um_first_touch_end_to_end_us": {
+        "value": 138.622000,
+        "unit": "us"
+      }
+    },
+    "peak": {
+      "fp16_tensor_tflops": {
+        "value": 100.876260,
+        "unit": "TFLOP/s (FP16 accumulation)"
+      },
+      "fp32_cuda_cores_peak_tflops": {
+        "value": 23.116189,
+        "unit": "TFLOP/s"
+      },
+      "fp32_tflops": {
+        "value": 24.256512,
+        "unit": "TFLOP/s"
+      },
+      "fp64_tflops": {
+        "value": 0.379008,
+        "unit": "TFLOP/s"
+      },
+      "memory_bw_theoretical_gbps": {
+        "value": 448.032000,
+        "unit": "GB/s"
+      },
+      "tf32_tensor_tflops": {
+        "value": 25.241550,
+        "unit": "TFLOP/s"
+      }
+    },
+    "pipeline_depth": {
+      "ffma_dependent_chain_cycles": {
+        "value": 4.455444,
+        "unit": "cycles"
+      },
+      "ffma_ilp16_cyc_per_op": {
+        "value": 1.048218,
+        "unit": "cycles"
+      },
+      "ffma_ilp1_cyc_per_op": {
+        "value": 4.455444,
+        "unit": "cycles"
+      },
+      "ffma_ilp2_cyc_per_op": {
+        "value": 2.258942,
+        "unit": "cycles"
+      },
+      "ffma_ilp4_cyc_per_op": {
+        "value": 1.223724,
+        "unit": "cycles"
+      },
+      "ffma_ilp8_cyc_per_op": {
+        "value": 1.096817,
+        "unit": "cycles"
+      },
+      "imad_dependent_chain_cycles": {
+        "value": 4.456238,
+        "unit": "cycles"
+      },
+      "imad_ilp16_cyc_per_op": {
+        "value": 2.036629,
+        "unit": "cycles"
+      },
+      "imad_ilp1_cyc_per_op": {
+        "value": 4.456238,
+        "unit": "cycles"
+      },
+      "imad_ilp2_cyc_per_op": {
+        "value": 2.291351,
+        "unit": "cycles"
+      },
+      "imad_ilp4_cyc_per_op": {
+        "value": 2.146194,
+        "unit": "cycles"
+      },
+      "imad_ilp8_cyc_per_op": {
+        "value": 2.073509,
+        "unit": "cycles"
+      },
+      "saturation_ilp_ffma": {
+        "value": 8.000000,
+        "unit": "chains"
+      },
+      "saturation_ilp_imad": {
+        "value": 4.000000,
+        "unit": "chains"
+      }
+    },
+    "tensor_core": {
+      "mma_m16n8k8_latency_cyc": {
+        "value": 35.228760,
+        "unit": "cycles"
+      },
+      "mma_m16n8k8_latency_ns": {
+        "value": 13.384787,
+        "unit": "nominal ns"
+      },
+      "mma_m16n8k8_throughput_tflops": {
+        "value": 25.241550,
+        "unit": "TFLOP/s"
+      }
+    },
+    "tensor_core_extended": {
+      "bf16_m16n8k16_latency_cycles": {
+        "value": 35.232910,
+        "unit": "cycles"
+      },
+      "bf16_m16n8k16_latency_ns": {
+        "value": 13.386364,
+        "unit": "ns"
+      },
+      "bf16_m16n8k16_throughput_TFs": {
+        "value": 52.274516,
+        "unit": "TFLOP/s"
+      },
+      "fp16_m16n8k16_latency_cycles": {
+        "value": 29.818359,
+        "unit": "cycles"
+      },
+      "fp16_m16n8k16_latency_ns": {
+        "value": 11.329164,
+        "unit": "ns"
+      },
+      "fp16_m16n8k16_throughput_TFs": {
+        "value": 100.876260,
+        "unit": "TFLOP/s"
+      },
+      "fp8_m16n8k32_latency_cycles": {
+        "value": 34.885010,
+        "unit": "cycles"
+      },
+      "fp8_m16n8k32_latency_ns": {
+        "value": 13.254183,
+        "unit": "ns"
+      },
+      "fp8_m16n8k32_throughput_TFs": {
+        "value": 104.555067,
+        "unit": "TFLOP/s"
+      },
+      "int8_m16n8k32_latency_cycles": {
+        "value": 27.824951,
+        "unit": "cycles"
+      },
+      "int8_m16n8k32_latency_ns": {
+        "value": 10.571790,
+        "unit": "ns"
+      },
+      "int8_m16n8k32_throughput_Tops": {
+        "value": 202.677775,
+        "unit": "TOP/s"
+      }
+    },
+    "tensor_core_more": {
+      "dmma_m8n8k4_latency_cyc": {
+        "value": 558.280518,
+        "unit": "cycles"
+      },
+      "dmma_m8n8k4_latency_ns": {
+        "value": 212.112659,
+        "unit": "nominal ns"
+      },
+      "dmma_m8n8k4_throughput_tflops": {
+        "value": 0.321880,
+        "unit": "TFLOP/s"
+      },
+      "fp6_fp4_benchmark_implemented": {
+        "value": 0.000000,
+        "unit": "bool"
+      },
+      "fp6_fp4_mma_supported": {
+        "value": 1.000000,
+        "unit": "bool (requires sm_120a/f)"
+      },
+      "mma_ffma_overlap_ratio": {
+        "value": 0.935379,
+        "unit": ""
+      },
+      "mma_m16n8k4_tf32_latency_cyc": {
+        "value": 34.811523,
+        "unit": "cycles"
+      },
+      "mma_m16n8k4_tf32_latency_ns": {
+        "value": 13.226263,
+        "unit": "nominal ns"
+      },
+      "mma_m16n8k4_tf32_throughput_tflops": {
+        "value": 12.824439,
+        "unit": "TFLOP/s"
+      },
+      "wgmma_supported": {
+        "value": 0.000000,
+        "unit": "bool (PTX target)"
+      }
+    },
+    "tma": {
+      "tma_1d_load_latency_cyc": {
+        "value": 425.550781,
+        "unit": "cycles"
+      },
+      "tma_g2s_load_bw_gibps": {
+        "value": 391.470081,
+        "unit": "GiB/s"
+      }
+    },
+    "topology": {
+      "four_warp_scaling_consistent": {
+        "value": 1.000000,
+        "unit": "bool"
+      },
+      "gpc_count": {
+        "value": null,
+        "unit": "N/A"
+      },
+      "l2_cache_size_mb": {
+        "value": 32.000000,
+        "unit": "MiB"
+      },
+      "l2_partition_count": {
+        "value": null,
+        "unit": "N/A"
+      },
+      "max_blocks_per_sm": {
+        "value": 24.000000,
+        "unit": ""
+      },
+      "max_threads_per_block": {
+        "value": 1024.000000,
+        "unit": ""
+      },
+      "max_threads_per_sm": {
+        "value": 1536.000000,
+        "unit": ""
+      },
+      "max_warps_per_sm": {
+        "value": 48.000000,
+        "unit": ""
+      },
+      "memory_controller_count": {
+        "value": null,
+        "unit": "N/A"
+      },
+      "one_vs_four_warp_scaling_ratio": {
+        "value": 4.013238,
+        "unit": ""
+      },
+      "registers_per_sm": {
+        "value": 65536.000000,
+        "unit": ""
+      },
+      "shared_memory_bank_width_bytes": {
+        "value": 4.000000,
+        "unit": "bytes"
+      },
+      "shared_memory_banks": {
+        "value": 32.000000,
+        "unit": ""
+      },
+      "shared_memory_per_block_default_kb": {
+        "value": 48.000000,
+        "unit": "KiB"
+      },
+      "shared_memory_per_block_optin_kb": {
+        "value": 99.000000,
+        "unit": "KiB"
+      },
+      "shared_memory_per_sm_kb": {
+        "value": 100.000000,
+        "unit": "KiB"
+      },
+      "sm_count": {
+        "value": 36.000000,
+        "unit": ""
+      },
+      "smsps_per_sm": {
+        "value": 4.000000,
+        "unit": ""
+      },
+      "sweep_saturation_warps": {
+        "value": 20.000000,
+        "unit": "warps"
+      },
+      "tpc_count": {
+        "value": null,
+        "unit": "N/A"
+      },
+      "warp_scaling_baseline_cyc_per_fma": {
+        "value": 4.461060,
+        "unit": "cycles"
+      },
+      "warp_scaling_w12_cyc_per_fma": {
+        "value": 4.854675,
+        "unit": "cycles"
+      },
+      "warp_scaling_w16_cyc_per_fma": {
+        "value": 5.154602,
+        "unit": "cycles"
+      },
+      "warp_scaling_w1_cyc_per_fma": {
+        "value": 4.464294,
+        "unit": "cycles"
+      },
+      "warp_scaling_w20_cyc_per_fma": {
+        "value": 6.162659,
+        "unit": "cycles"
+      },
+      "warp_scaling_w24_cyc_per_fma": {
+        "value": 7.262085,
+        "unit": "cycles"
+      },
+      "warp_scaling_w32_cyc_per_fma": {
+        "value": 9.629089,
+        "unit": "cycles"
+      },
+      "warp_scaling_w4_cyc_per_fma": {
+        "value": 4.461548,
+        "unit": "cycles"
+      },
+      "warp_scaling_w5_cyc_per_fma": {
+        "value": 4.774353,
+        "unit": "cycles"
+      },
+      "warp_scaling_w8_cyc_per_fma": {
+        "value": 4.774353,
+        "unit": "cycles"
+      },
+      "warps_per_smsp": {
+        "value": 12.000000,
+        "unit": ""
+      }
+    },
+    "warp_collectives": {
+      "always_work_cyc_per_iter": {
+        "value": 4.510254,
+        "unit": "cycles"
+      },
+      "divergence_16way_cyc_per_iter": {
+        "value": 614.140625,
+        "unit": "cycles"
+      },
+      "divergence_2way_cyc_per_iter": {
+        "value": 8.330078,
+        "unit": "cycles"
+      },
+      "divergence_32way_cyc_per_iter": {
+        "value": 1286.170898,
+        "unit": "cycles"
+      },
+      "divergence_4way_cyc_per_iter": {
+        "value": 110.140625,
+        "unit": "cycles"
+      },
+      "divergence_8way_cyc_per_iter": {
+        "value": 278.198242,
+        "unit": "cycles"
+      },
+      "divergence_uniform_cyc_per_iter": {
+        "value": 4.728516,
+        "unit": "cycles"
+      },
+      "elect_sync_issue_cycles": {
+        "value": 23.030762,
+        "unit": "cycles"
+      },
+      "ffma_ipc_w1": {
+        "value": 0.784937,
+        "unit": "warp-inst/cycle/SM"
+      },
+      "ffma_ipc_w16": {
+        "value": 3.684282,
+        "unit": "warp-inst/cycle/SM"
+      },
+      "ffma_ipc_w32": {
+        "value": 3.689103,
+        "unit": "warp-inst/cycle/SM"
+      },
+      "ffma_ipc_w4": {
+        "value": 3.139900,
+        "unit": "warp-inst/cycle/SM"
+      },
+      "ffma_ipc_w8": {
+        "value": 3.667786,
+        "unit": "warp-inst/cycle/SM"
+      },
+      "first_iteration_skip_cyc_per_iter": {
+        "value": 5.408936,
+        "unit": "cycles"
+      },
+      "iadd_ipc_w1": {
+        "value": 0.142534,
+        "unit": "warp-inst/cycle/SM"
+      },
+      "iadd_ipc_w16": {
+        "value": 1.681078,
+        "unit": "warp-inst/cycle/SM"
+      },
+      "iadd_ipc_w32": {
+        "value": 2.045954,
+        "unit": "warp-inst/cycle/SM"
+      },
+      "iadd_ipc_w4": {
+        "value": 0.570067,
+        "unit": "warp-inst/cycle/SM"
+      },
+      "iadd_ipc_w8": {
+        "value": 1.140024,
+        "unit": "warp-inst/cycle/SM"
+      },
+      "pred_split_25_cyc_per_iter": {
+        "value": 5.843750,
+        "unit": "cycles"
+      },
+      "pred_split_50_cyc_per_iter": {
+        "value": 5.835205,
+        "unit": "cycles"
+      },
+      "pred_split_75_cyc_per_iter": {
+        "value": 5.835205,
+        "unit": "cycles"
+      },
+      "redux_add_latency_cycles": {
+        "value": 48.489502,
+        "unit": "cycles"
+      },
+      "vote_ballot_latency_cycles": {
+        "value": 18.056396,
+        "unit": "cycles"
+      }
+    },
+    "warp_shuffle": {
+      "shfl_idx_latency_cycles": {
+        "value": 31.021179,
+        "unit": "cycles"
+      },
+      "shfl_idx_latency_ns": {
+        "value": 11.786162,
+        "unit": "nominal ns"
+      },
+      "shfl_idx_throughput_Gwarp_inst_s": {
+        "value": 47.271009,
+        "unit": "Gwarp-inst/s"
+      }
+    }
+  }
+}

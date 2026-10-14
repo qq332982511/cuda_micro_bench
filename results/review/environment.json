@@ -1,0 +1,9 @@
+{
+  "captured_utc": "2026-10-13T19:58:09.482186+00:00",
+  "observations": {
+    "os": "Linux liujunjie 6.6.87.1-microsoft-standard-WSL2 #1 SMP PREEMPT_DYNAMIC Mon Apr 21 17:08:54 UTC 2025 x86_64 x86_64 x86_64 GNU/Linux",
+    "nvcc": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2026 NVIDIA Corporation\nBuilt on Mon_Mar_02_09:52:23_PM_PST_2026\nCuda compilation tools, release 13.2, V13.2.51\nBuild cuda_13.2.r13.2/compiler.37434383_0",
+    "gpu": "name, pci.device_id, driver_version, temperature.gpu, clocks.current.sm [MHz], clocks.current.memory [MHz], memory.total [MiB], memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 5060 Ti, 0x2D0410DE, 610.88, 41, 2685 MHz, 13801 MHz, 16311 MiB, 3211 MiB, 49 %",
+    "pcie": "pcie.link.gen.current, pcie.link.gen.max, pcie.link.width.current, pcie.link.width.max\n5, 5, 8, 16"
+  }
+}

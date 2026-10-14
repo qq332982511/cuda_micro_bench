@@ -19,7 +19,7 @@ __global__ void kernel_syncthreads_1warp(unsigned int *cycles, int iters) {
   CMB_CLOCK_STOP();
   if (sink == 0xdeadbeef)
     t1 = clockVal();
-  cycles[0] = t1 - t0;
+  if (threadIdx.x == 0) cycles[0] = t1 - t0;
 }
 
 // __syncthreads() latency measured by a full block.
@@ -47,7 +47,7 @@ __global__ void kernel_named_barrier(unsigned int *cycles, int iters) {
   CMB_CLOCK_STOP();
   if (sink == 0xdeadbeef)
     t1 = clockVal();
-  cycles[0] = t1 - t0;
+  if (threadIdx.x == 0) cycles[0] = t1 - t0;
 }
 
 // mbarrier arrive/wait latency (single thread, no async op, tx_count=0).
@@ -78,22 +78,23 @@ __global__ void kernel_mbarrier_latency(unsigned int *cycles, int iters) {
       } while (!ready);
     }
     CMB_CLOCK_STOP();
-    cycles[0] = t1 - t0;
+    if (threadIdx.x == 0) cycles[0] = t1 - t0;
   }
 }
 
-// __syncwarp() latency measured by one warp.
+// Converged warp-sync loop. ptxas eliminates bar.warp.sync on this target;
+// the observed value is loop cost, not WARPSYNC instruction latency.
 __global__ void kernel_syncwarp(unsigned int *cycles, int iters) {
   int sink = threadIdx.x;
   CMB_CLOCK_START();
   for (int i = 0; i < iters; ++i) {
-    __syncwarp();
+    asm volatile("bar.warp.sync 0xffffffff;" ::: "memory");
     sink += i;
   }
   CMB_CLOCK_STOP();
   if (sink == 0xdeadbeef)
     t1 = clockVal();
-  cycles[0] = t1 - t0;
+  if (threadIdx.x == 0) cycles[0] = t1 - t0;
 }
 
 #define FENCE_KERNEL(name, space)                                              \
@@ -107,7 +108,7 @@ __global__ void kernel_syncwarp(unsigned int *cycles, int iters) {
     CMB_CLOCK_STOP();                                                          \
     if (sink == 0xdeadbeef)                                                    \
       t1 = clockVal();                                                         \
-    cycles[0] = t1 - t0;                                                       \
+    if (threadIdx.x == 0) cycles[0] = t1 - t0;                                                       \
   }
 
 FENCE_KERNEL(kernel_fence_cta, cta)
@@ -144,38 +145,38 @@ void benchmark_barriers() {
 
   // 1 warp only
   cyc = measure_barrier(kernel_syncthreads_1warp, 32, iters, "syncthreads_1warp");
-  ns = cyc * 1e9 / info.clock_rate_khz;
-  printf("  __syncthreads() latency (1 warp):  %.2f cycles (%.2f ns)\n", cyc, ns);
+  ns = cyclesToNominalNs(cyc, info.clock_rate_khz);
+  printf("  __syncthreads() latency (1 warp):  %.2f cycles (%.2f nominal ns)\n", cyc, ns);
   g_results.log("barriers", "syncthreads_1warp_cycles", cyc, "cycles");
-  g_results.log("barriers", "syncthreads_1warp_ns", ns, "ns");
+  g_results.log("barriers", "syncthreads_1warp_ns", ns, "nominal ns");
 
   // Full block
   cyc = measure_barrier(kernel_syncthreads_full, 256, iters, "syncthreads_full");
-  ns = cyc * 1e9 / info.clock_rate_khz;
-  printf("  __syncthreads() latency (256 threads): %.2f cycles (%.2f ns)\n", cyc, ns);
+  ns = cyclesToNominalNs(cyc, info.clock_rate_khz);
+  printf("  __syncthreads() latency (256 threads): %.2f cycles (%.2f nominal ns)\n", cyc, ns);
   g_results.log("barriers", "syncthreads_full_cycles", cyc, "cycles");
-  g_results.log("barriers", "syncthreads_full_ns", ns, "ns");
+  g_results.log("barriers", "syncthreads_full_ns", ns, "nominal ns");
 
   // Named barrier
   cyc = measure_barrier(kernel_named_barrier, 32, iters, "named_barrier");
-  ns = cyc * 1e9 / info.clock_rate_khz;
-  printf("  bar.sync 1 latency:                %.2f cycles (%.2f ns)\n", cyc, ns);
+  ns = cyclesToNominalNs(cyc, info.clock_rate_khz);
+  printf("  bar.sync 1 latency:                %.2f cycles (%.2f nominal ns)\n", cyc, ns);
   g_results.log("barriers", "named_barrier_cycles", cyc, "cycles");
-  g_results.log("barriers", "named_barrier_ns", ns, "ns");
+  g_results.log("barriers", "named_barrier_ns", ns, "nominal ns");
 
   // mbarrier arrive/wait
   cyc = measure_barrier(kernel_mbarrier_latency, 32, iters, "mbarrier");
-  ns = cyc * 1e9 / info.clock_rate_khz;
-  printf("  mbarrier arrive+wait latency:      %.2f cycles (%.2f ns)\n", cyc, ns);
+  ns = cyclesToNominalNs(cyc, info.clock_rate_khz);
+  printf("  mbarrier arrive+wait latency:      %.2f cycles (%.2f nominal ns)\n", cyc, ns);
   g_results.log("barriers", "mbarrier_cycles", cyc, "cycles");
-  g_results.log("barriers", "mbarrier_ns", ns, "ns");
+  g_results.log("barriers", "mbarrier_ns", ns, "nominal ns");
 
   // __syncwarp
   cyc = measure_barrier(kernel_syncwarp, 32, iters, "syncwarp");
-  ns = cyc * 1e9 / info.clock_rate_khz;
-  printf("  __syncwarp() latency:              %.2f cycles (%.2f ns)\n", cyc, ns);
-  g_results.log("barriers", "syncwarp_cycles", cyc, "cycles");
-  g_results.log("barriers", "syncwarp_ns", ns, "ns");
+  ns = cyclesToNominalNs(cyc, info.clock_rate_khz);
+  printf("  Converged syncwarp loop cost:              %.2f cycles (%.2f nominal ns)\n", cyc, ns);
+  g_results.log("barriers", "converged_syncwarp_loop_cycles", cyc, "cycles");
+  g_results.log("barriers", "syncwarp_ns", ns, "nominal ns");
 
   // Fences
   const char *fence_names[] = {"cta", "gpu", "sys"};
@@ -184,8 +185,8 @@ void benchmark_barriers() {
                                                   kernel_fence_sys};
   for (int f = 0; f < 3; ++f) {
     cyc = measure_barrier(fence_kernels[f], 1, iters, fence_names[f]);
-    ns = cyc * 1e9 / info.clock_rate_khz;
-    printf("  fence.acq_rel.%s latency:         %.2f cycles (%.2f ns)\n",
+    ns = cyclesToNominalNs(cyc, info.clock_rate_khz);
+    printf("  fence.acq_rel.%s latency:         %.2f cycles (%.2f nominal ns)\n",
            fence_names[f], cyc, ns);
     char key[64];
     snprintf(key, sizeof(key), "fence_%s_cycles", fence_names[f]);

@@ -1,0 +1,331 @@
+=== Device Info ===
+Device ID           : 0
+Name                : NVIDIA GeForce RTX 5060 Ti
+Compute Capability  : 12.0
+SM Count            : 36
+Warp Size           : 32
+Max Warps/SM        : 48
+Max Threads/SM      : 1536
+Max Threads/Block   : 1024
+Max Blocks/SM       : 24
+Registers/SM        : 65536
+Registers/Thread    : 2730
+Shared Memory/SM    : 100 KB
+Shared Memory/Block : 48 KB
+Global Memory       : 15.93 GB
+Core Clock          : 2.632 GHz
+Memory Clock        : 14.001 GHz
+Memory Bus Width    : 128 bit
+L2 Cache Size       : 32768 KB
+
+=== Derived / Theoretical Limits ===
+Peak FP32 (theoretical, all SMs) : 24.26 TFLOP/s
+Peak FP64 (consumer estimate)    : 0.38 TFLOP/s
+Peak Memory BW (theoretical)     : 448.03 GB/s
+
+=== Topology Values Not Exposed by Runtime ===
+GPC count             : N/A (not exposed)
+TPC count             : N/A (not exposed)
+L2 partition count    : N/A (not exposed)
+Memory controller count: N/A (not exposed)
+=== Topology / SMSP Probes ===
+  Warp-to-SMSP round-robin check: 1-warp 4.48 cyc/FMA, 4-warps 1.11 cyc/FMA, ratio 4.02 (consistent)
+  SMSPs / SM            : 4
+  Warps / SMSP (max)    : 12
+  Full latency hiding   : 4 warps/SM (4.46 cyc/FMA baseline)
+    W= 1 -> 4.46 cyc/FMA
+    W= 4 -> 4.46 cyc/FMA
+    W= 5 -> 4.77 cyc/FMA
+    W= 8 -> 4.77 cyc/FMA
+    W=12 -> 4.85 cyc/FMA
+    W=16 -> 5.15 cyc/FMA
+    W=20 -> 6.15 cyc/FMA
+    W=24 -> 7.26 cyc/FMA
+    W=32 -> 9.63 cyc/FMA
+=== Pipeline Depth / ILP Sweeps ===
+  FFMA ILP= 1: 4.456 cyc/op (0.224 op/cyc)
+  FFMA ILP= 2: 2.291 cyc/op (0.437 op/cyc)
+  FFMA ILP= 4: 1.209 cyc/op (0.827 op/cyc)
+  FFMA ILP= 8: 1.105 cyc/op (0.905 op/cyc)
+  FFMA ILP=16: 1.052 cyc/op (0.950 op/cyc)
+  IMAD ILP= 1: 4.582 cyc/op (0.218 op/cyc)
+  IMAD ILP= 2: 2.324 cyc/op (0.430 op/cyc)
+  IMAD ILP= 4: 2.146 cyc/op (0.466 op/cyc)
+  IMAD ILP= 8: 2.074 cyc/op (0.482 op/cyc)
+  IMAD ILP=16: 2.037 cyc/op (0.491 op/cyc)
+  Inferred pipeline depth: FFMA=4.5 cyc, IMAD=4.6 cyc
+  Inferred I-buffer depth: FFMA=8 entries, IMAD=4 entries
+=== Global Memory Benchmarks ===
+  Copy     16 MB -> 0.078 ms, BW: 399.25 GiB/s
+  Copy     64 MB -> 0.382 ms, BW: 327.49 GiB/s
+  Copy    128 MB -> 0.769 ms, BW: 324.98 GiB/s
+  Copy    256 MB -> 1.546 ms, BW: 323.39 GiB/s
+  Pointer-chase latency: 435.72 cycles (165546.15 ns)
+=== Memory Subsystem Probes ===
+  Stride latency probe (cycles per access):
+    stride   4 B -> 99.89 cycles/access
+    stride   8 B -> 101.00 cycles/access
+    stride  16 B -> 101.44 cycles/access
+    stride  32 B -> 105.23 cycles/access
+    stride  64 B -> 113.47 cycles/access
+    stride 128 B -> 131.88 cycles/access
+    stride 256 B -> 132.44 cycles/access
+  Detected cache-line stride <= 64 B
+  Coalescing probe (cycles per 32-load warp):
+    stride   4 B -> 108.52 cycles per warp-load
+    stride   8 B -> 108.62 cycles per warp-load
+    stride  16 B -> 113.61 cycles per warp-load
+    stride  32 B -> 128.14 cycles per warp-load
+    stride  64 B -> 129.12 cycles per warp-load
+    stride 128 B -> 131.38 cycles per warp-load
+  L1 per-warp BW: 6.69 B/cyc, 17.61 GiB/s
+  L2 aggregate BW: 7560.48 GiB/s
+  Async copy 16 B latency: 58.46 cycles
+=== Shared Memory Benchmarks ===
+  Max Shared Memory/SM: 100 KB
+  Shared BW (16 KB, 16384 iters): 1136.86 GiB/s
+  Shared latency: 28.01 cycles
+  Bank conflict probe (cycles per access):
+    stride  1: 50.84 cycles/access
+    stride  2: 50.94 cycles/access
+    stride  3: 50.94 cycles/access
+    stride  4: 50.84 cycles/access
+    stride  5: 50.93 cycles/access
+    stride  6: 50.81 cycles/access
+    stride  7: 50.94 cycles/access
+    stride  8: 67.33 cycles/access
+    stride  9: 50.94 cycles/access
+    stride 10: 50.83 cycles/access
+    stride 11: 50.93 cycles/access
+    stride 12: 50.84 cycles/access
+    stride 13: 50.95 cycles/access
+    stride 14: 50.94 cycles/access
+    stride 15: 50.93 cycles/access
+    stride 16: 128.06 cycles/access
+    stride 17: 50.94 cycles/access
+    stride 18: 50.94 cycles/access
+    stride 19: 50.94 cycles/access
+    stride 20: 52.20 cycles/access
+    stride 21: 50.93 cycles/access
+    stride 22: 50.94 cycles/access
+    stride 23: 50.93 cycles/access
+    stride 24: 64.13 cycles/access
+    stride 25: 50.93 cycles/access
+    stride 26: 50.95 cycles/access
+    stride 27: 50.94 cycles/access
+    stride 28: 52.19 cycles/access
+    stride 29: 50.93 cycles/access
+    stride 30: 50.94 cycles/access
+    stride 31: 50.93 cycles/access
+    stride 32: 256.00 cycles/access
+=== Cache Benchmarks ===
+  Cache size/latency probe (stride=128, one warp):
+         4 KB -> 83.11 cycles (31575.44 ns)
+         8 KB -> 83.10 cycles (31573.38 ns)
+        16 KB -> 83.12 cycles (31580.27 ns)
+        32 KB -> 83.16 cycles (31594.13 ns)
+        64 KB -> 83.23 cycles (31621.92 ns)
+       128 KB -> 83.37 cycles (31677.34 ns)
+       256 KB -> 83.67 cycles (31787.86 ns)
+       512 KB -> 101.70 cycles (38638.04 ns)
+      1024 KB -> 101.72 cycles (38646.66 ns)
+      2048 KB -> 101.84 cycles (38691.12 ns)
+      4096 KB -> 101.90 cycles (38714.35 ns)
+      8192 KB -> 101.89 cycles (38711.29 ns)
+     16384 KB -> 101.89 cycles (38711.18 ns)
+     32768 KB -> 101.97 cycles (38743.32 ns)
+     65536 KB -> 146.31 cycles (55589.55 ns)
+  Stride latency probe (8 MB array):
+    stride    4 B -> 99.90 cycles
+    stride    8 B -> 101.01 cycles
+    stride   16 B -> 101.44 cycles
+    stride   32 B -> 105.21 cycles
+    stride   64 B -> 113.45 cycles
+    stride  128 B -> 131.44 cycles
+    stride  256 B -> 131.44 cycles
+    stride  512 B -> 131.44 cycles
+  L1 capacity probe (pointer chase):
+       8 KB -> 44.28 cycles/access
+      16 KB -> 44.42 cycles/access
+      32 KB -> 44.71 cycles/access
+      64 KB -> 45.29 cycles/access
+     128 KB -> 46.45 cycles/access
+     256 KB -> 341.05 cycles/access
+=== Compute Throughput ===
+  FP32 ADD       : 11893.11 GFLOP/s
+  FP32 MUL       : 12091.20 GFLOP/s
+  FP32 FMA       : 10766.90 GFLOP/s
+  INT32 ADD      : 12620.77 GOPS/s
+  INT32 MUL      : 6412.22 GOPS/s
+  FP64 ADD       : 175.13 GOPS/s
+  RSQRT          : 1600.61 GOP/s
+  SIN            : 392.89 GOP/s
+=== Compute Latency ===
+  FP32 ADD       : 4.52 cycles (1716.17 ns)
+  FP32 MUL       : 4.52 cycles (1716.17 ns)
+  FP32 FMA       : 4.52 cycles (1716.75 ns)
+  INT32 ADD      : 1.76 cycles (670.41 ns)
+  INT32 MUL      : 1.83 cycles (694.18 ns)
+  FP64 ADD       : 62.88 cycles (23890.67 ns)
+  RSQRT          : 41.51 cycles (15770.79 ns)
+  SIN            : 22.14 cycles (8410.58 ns)
+  COS            : 22.14 cycles (8410.58 ns)
+  EX2            : 25.01 cycles (9501.54 ns)
+  LG2            : 41.51 cycles (15770.79 ns)
+  RCP            : 46.01 cycles (17481.56 ns)
+  TANH           : 18.01 cycles (6842.59 ns)
+=== Pipe Co-Issue Probes ===
+  FMA only                 : 74026.00 cycles (16384 iters)
+  IMAD only                : 73051.00 cycles (16384 iters)
+  FMA+IMAD mixed           : 75129.00 cycles (16384 iters)
+  FMA cyc/op: 4.518, IMAD cyc/op: 4.459, mixed cyc/pair: 4.586
+  FMA+IMAD overlap ratio: 98.49%
+  Throughput-based co-issue:
+    FMA IPC: 121.83, IMAD IPC: 116.16
+    mixed total IPC: 124.72  (102.4% of max single)
+=== TMA (cp.async.bulk.tensor) Probes ===
+  TMA 1D 16-byte load latency: 425.53 cycles (108935 cycles / 256 iters)
+  TMA G2S bulk-copy BW: 380.68 GiB/s (252.0 MB in 0.646 ms, 288 blocks x 56 x 16 KiB)
+=== Instruction Throughput (inst/cycle per SM) ===
+  FP32 FMA throughput: 130.25 inst/cycle
+  FP32 ADD throughput: 130.79 inst/cycle
+  FP32 MUL throughput: 130.39 inst/cycle
+  INT32 ADD throughput: 132.67 inst/cycle
+  INT32 MUL throughput: 127.57 inst/cycle
+  FP64 ADD throughput: 1.72 inst/cycle
+  RSQRT throughput: 17.53 inst/cycle
+  SIN throughput: 17.56 inst/cycle
+  COS throughput: 16.27 inst/cycle
+  EX2 throughput: 17.55 inst/cycle
+  LG2 throughput: 14.82 inst/cycle
+  RCP throughput: 16.05 inst/cycle
+  TANH throughput: 15.26 inst/cycle
+  IADD3 throughput: 132.21 inst/cycle
+  IMAD throughput: 126.82 inst/cycle
+  LEA throughput: 132.56 inst/cycle
+  IDP4A throughput: 69.70 inst/cycle
+  LOP3 throughput: 126.94 inst/cycle
+  SHL var throughput: 68.53 inst/cycle
+  PRMT throughput: 126.77 inst/cycle
+  DIV u32 throughput: 7.87 inst/cycle
+  ADD u64 throughput: 107.18 inst/cycle
+  MUL u64 throughput: 23.75 inst/cycle
+  VADD2 throughput: 45.87 inst/cycle
+  VADD4 throughput: 68.09 inst/cycle
+  FMA f16x2 throughput: 69.64 inst/cycle
+  FMA bf16x2 throughput: 69.65 inst/cycle
+  FMA f32x2 throughput: 15.29 inst/cycle
+  LDG throughput: 1.45 inst/cycle
+  STS throughput: 4.37 inst/cycle
+=== Atomic Benchmarks ===
+  Global atomicAdd throughput (contended): 80.93 GOPS/s
+  Shared atomicAdd throughput: 1377.29 GOPS/s
+  Global atomicAdd latency: 94.53 cycles (35915.57 ns)
+  Global atomicCAS latency: 358.71 cycles (136289.65 ns)
+  Global atomicExch latency: 357.75 cycles (135923.62 ns)
+  Global atomicMin latency: 357.38 cycles (135782.17 ns)
+  Global atomicMax latency: 357.34 cycles (135767.97 ns)
+  Block reduce (tree) latency: 1305.09 cycles (495854.43 ns)
+=== Tensor Core (MMA) Benchmarks ===
+  MMA m16n8k8 latency: 34.88 cycles (13251.59 ns)
+  MMA m16n8k8 throughput: 24.46 TFLOP/s
+=== Tensor Core (More Shapes) ===
+  DMMA m8n8k4 (FP64) latency: 558.24 cycles (212097.26 ns)
+  DMMA m8n8k4 (FP64) throughput: 0.362 TFLOP/s
+  MMA m16n8k4 (TF32) latency: 34.78 cycles (13214.58 ns)
+  MMA m16n8k4 (TF32) throughput: 12.36 TFLOP/s
+  FMA+TFMA overlap: FMA=4.58 cyc, MMA=34.88 cyc, mixed=34.74 cyc, overlap=100.00%
+  wgmma supported: false (SM_120)
+  FP6/FP4 MMA supported: false
+=== Occupancy / Launch Limits ===
+  Block size   64 -> max blocks/SM: 24
+  Block size  128 -> max blocks/SM: 12
+  Block size  256 -> max blocks/SM: 6
+  Block size  512 -> max blocks/SM: 3
+  Block size 1024 -> max blocks/SM: 1
+  Occupancy kernel 144 blocks x 256 threads: 0.230 ms
+=== Warp Shuffle ===
+  shfl.sync.idx latency: 31.03 cycles (11787.72 ns)
+  shfl.sync.idx throughput: 1271.66 Ginst/s
+=== Warp Collectives & Divergence ===
+  vote.ballot.sync latency : 18.05 cycles
+  elect.sync latency       : 23.03 cycles
+  redux.sync.add latency   : 48.49 cycles
+  Divergence cost model:
+  uniform                  : 4.76 cycles/iter
+  2-way                    : 7.56 cycles/iter
+  4-way                    : 112.17 cycles/iter
+  8-way                    : 280.22 cycles/iter
+  16-way                   : 616.14 cycles/iter
+  32-way                   : 1840.15 cycles/iter
+  branch cold              : 5.41 cycles
+  branch warm              : 4.52 cycles
+  Branch cold/warm delta: 0.90 cycles
+  Predicated divergence 25% active: 9.78 cycles/iter
+  Predicated divergence 50% active: 9.76 cycles/iter
+  Predicated divergence 75% active: 9.76 cycles/iter
+  IPC vs active warps/SM (ILP=4):
+    ffma W= 1: IPC=23.71
+    ffma W= 4: IPC=96.39
+    ffma W= 8: IPC=114.42
+    ffma W=16: IPC=116.07
+    ffma W=32: IPC=116.68
+    iadd3 W= 1: IPC=59.20
+    iadd3 W= 4: IPC=237.45
+    iadd3 W= 8: IPC=469.58
+    iadd3 W=16: IPC=762.05
+    iadd3 W=32: IPC=902.00
+=== Barriers ===
+  __syncthreads() latency (1 warp):  14.67 cycles (5575.07 ns)
+  __syncthreads() latency (256 threads): 28.97 cycles (11007.85 ns)
+  bar.sync 1 latency:                14.67 cycles (5575.07 ns)
+  mbarrier arrive+wait latency:      65.03 cycles (24708.85 ns)
+  __syncwarp() latency:              1.83 cycles (693.74 ns)
+  fence.acq_rel.cta latency:         10.79 cycles (4098.07 ns)
+  fence.acq_rel.gpu latency:         284.73 cycles (108179.53 ns)
+  fence.acq_rel.sys latency:         949.97 cycles (360932.05 ns)
+=== Extended Instruction Latency ===
+  IADD3      latency: 1.76 cycles (670.11 ns)
+  IMAD       latency: 4.46 cycles (1692.87 ns)
+  LEA        latency: 1.76 cycles (670.11 ns)
+  IDP4A      latency: 4.46 cycles (1692.75 ns)
+=== More Instruction Latencies ===
+  LOP3                : 4.52 cycles (1716.50 ns)
+  SHL const           : 1.93 cycles (734.74 ns)
+  SHL var             : 1.93 cycles (734.74 ns)
+  PRMT                : 4.52 cycles (1716.50 ns)
+  DIV u32             : 55.23 cycles (20983.85 ns)
+  ADD u64             : 1.94 cycles (735.48 ns)
+  MUL u64             : 1.54 cycles (585.12 ns)
+  CVT f32<->u32       : 12.58 cycles (4781.43 ns)
+  CVT f32<->s32       : 12.58 cycles (4781.43 ns)
+  CVT f32<->f64       : 126.71 cycles (48140.78 ns)
+  CVT u64<->u32       : 1.94 cycles (735.67 ns)
+  VADD2               : 5.44 cycles (2068.05 ns)
+  VADD4               : 11.52 cycles (4377.74 ns)
+  FMA f16x2           : 4.51 cycles (1713.07 ns)
+  FMA bf16x2          : 4.58 cycles (1740.06 ns)
+  FMA f32x2           : 4.60 cycles (1747.66 ns)
+=== Tensor Core Extended (MMA) ===
+  fp16_m16n8k16      latency: 29.82 cycles (11329.07 ns)
+  fp16_m16n8k16      throughput: 99.84 TFLOP/s
+  bf16_m16n8k16      latency: 34.54 cycles (13121.72 ns)
+  bf16_m16n8k16      throughput: 52.29 TFLOP/s
+  fp8_m16n8k32       latency: 34.88 cycles (13251.12 ns)
+  fp8_m16n8k32       throughput: 104.66 TFLOP/s
+  int8_m16n8k32      latency: 27.82 cycles (10571.33 ns)
+  int8_m16n8k32      throughput: 101.26 TOP/s
+=== PCIe / Launch Latency ===
+  Kernel launch latency (cold): 36.717 us
+  Kernel launch latency (warm, avg of 1000): 2.448 us
+  HtoD pinned bandwidth: 25.38 GiB/s
+  DtoH pinned bandwidth: 25.38 GiB/s
+  Device count: 1, P2P available: false
+  Unified Memory first-touch latency: 154.479 us
+=== Cluster ===
+  Device reports cluster launch supported, using max size: 8
+  Cluster launch (size=8) succeeded.
+  Cluster barrier latency (2-block, size=2): 381.99 cycles
+  Cluster barrier latency (max, size=8): 383.68 cycles
+  DSMEM latency test skipped (sync failure): unspecified launch failure
+  (cudaFree returned unspecified launch failure; clearing sticky error)

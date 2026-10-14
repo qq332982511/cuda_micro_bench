@@ -1,0 +1,162 @@
+[
+  {
+    "label": "只读 DRAM 带宽",
+    "section": "memory",
+    "key": "dram_read_bw_gbps",
+    "unit": "GB/s",
+    "baseline": 347.232152,
+    "median": 419.325553,
+    "min": 417.759359,
+    "max": 420.650275
+  },
+  {
+    "label": "L1 随机依赖读",
+    "section": "memory",
+    "key": "l1_latency_cyc",
+    "unit": "cycles",
+    "baseline": 45.288696,
+    "median": 44.032005,
+    "min": 44.032005,
+    "max": 44.032005
+  },
+  {
+    "label": "L2 随机依赖读",
+    "section": "memory",
+    "key": "l2_latency_cyc",
+    "unit": "cycles",
+    "baseline": 101.972412,
+    "median": 452.935997,
+    "min": 382.220154,
+    "max": 561.836601
+  },
+  {
+    "label": "DRAM 随机依赖读",
+    "section": "memory",
+    "key": "dram_latency_cyc",
+    "unit": "cycles",
+    "baseline": 435.717467,
+    "median": 915.320601,
+    "min": 902.4826,
+    "max": 915.607662
+  },
+  {
+    "label": "共享内存依赖读",
+    "section": "memory",
+    "key": "shared_memory_latency_cyc",
+    "unit": "cycles",
+    "baseline": 28.009926,
+    "median": 28.006531,
+    "min": 28.006531,
+    "max": 28.006531
+  },
+  {
+    "label": "共享内存向量读带宽",
+    "section": "memory_shared",
+    "key": "bandwidth_gibps",
+    "unit": "GiB/s",
+    "baseline": 1136.859726,
+    "median": 12255.435529,
+    "min": 12245.831209,
+    "max": 12276.834155
+  },
+  {
+    "label": "L1 单 warp 向量读/累积",
+    "section": "memory_more",
+    "key": "l1_per_warp_bw_gibps",
+    "unit": "nominal GiB/s",
+    "baseline": 17.613914,
+    "median": 60.831569,
+    "min": 60.830895,
+    "max": 60.832739
+  },
+  {
+    "label": "L2 向量读/累积",
+    "section": "memory_more",
+    "key": "l2_aggregate_bw_gibps",
+    "unit": "GiB/s",
+    "baseline": 7560.483843,
+    "median": 2038.989155,
+    "min": 2019.081737,
+    "max": 2050.166289
+  },
+  {
+    "label": "INT32 ADD 交替依赖链",
+    "section": "instructions",
+    "key": "int32_add_latency_cyc",
+    "unit": "cycles",
+    "baseline": 1.764526,
+    "median": 5.200745,
+    "min": 5.200745,
+    "max": 5.200745
+  },
+  {
+    "label": "FP32 FMA",
+    "section": "instructions",
+    "key": "fp32_fma_gflops",
+    "unit": "GFLOP/s",
+    "baseline": 10766.89585,
+    "median": 23123.268972,
+    "min": 23116.188921,
+    "max": 23201.435076
+  },
+  {
+    "label": "INT32 MUL 链",
+    "section": "instructions",
+    "key": "int32_mul_latency_cyc",
+    "unit": "cycles",
+    "baseline": 1.827087,
+    "median": 4.233765,
+    "min": 4.233765,
+    "max": 4.233765
+  },
+  {
+    "label": "DFMA 链",
+    "section": "instructions",
+    "key": "dfma_latency_cyc",
+    "unit": "cycles",
+    "baseline": 62.880249,
+    "median": 63.5401,
+    "min": 63.5401,
+    "max": 63.5401
+  },
+  {
+    "label": "32 warp IADD IPC",
+    "section": "warp_collectives",
+    "key": "iadd_ipc_w32",
+    "unit": "warp inst/cycle/SM",
+    "baseline": null,
+    "median": 2.045954,
+    "min": 2.045954,
+    "max": 2.045954
+  },
+  {
+    "label": "32 warp FFMA IPC",
+    "section": "warp_collectives",
+    "key": "ffma_ipc_w32",
+    "unit": "warp inst/cycle/SM",
+    "baseline": 116.68347,
+    "median": 3.689052,
+    "min": 3.688481,
+    "max": 3.689103
+  },
+  {
+    "label": "DSMEM 依赖远程读",
+    "section": "cluster",
+    "key": "dsmem_read_latency_cyc",
+    "unit": "cycles",
+    "baseline": null,
+    "median": 211.003174,
+    "min": 211.003174,
+    "max": 211.003174
+  },
+  {
+    "label": "INT8 MMA",
+    "section": "tensor_core_extended",
+    "key": "int8_m16n8k32_throughput_Tops",
+    "unit": "TOP/s",
+    "baseline": 101.259604,
+    "median": 202.541851,
+    "min": 202.541851,
+    "max": 202.677775
+  }
+]

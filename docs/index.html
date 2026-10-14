@@ -39,7 +39,7 @@
       <a href="#hero">Overview</a>
       <a href="#arch-diagram">Architecture Diagram</a>
       <a href="#topology">Topology</a>
-      <a href="#pipeline">Pipeline Depth</a>
+      <a href="#pipeline">Dependency Chains</a>
       <a href="#coissue">Co-Issue</a>
       <a href="#tma">TMA</a>
       <a href="#clock">Clock</a>
@@ -70,10 +70,11 @@
       </header>
 
       <div id="status"></div>
+      <p class="note">Reviewed on RTX 5060 Ti (CC 12.0). Kernel costs include loop/address overhead; nanoseconds derived from the device clock attribute are nominal estimates. External GB202 reference values are not pass/fail thresholds for this GPU. See <a href="review.md">methodology review</a>.</p>
 
       <section class="section-card" id="arch-diagram">
         <h2>Microarchitecture Diagram</h2>
-        <p class="note">Simplified SM block diagram and memory hierarchy, annotated with measured latency/throughput values. Peak issue throughput comes from the SMSP count and saturated instruction benchmarks.</p>
+        <p class="note">Simplified SM block diagram and memory hierarchy, annotated with measured latency/throughput values. FP32 and INT32 share execution resources on RTX Blackwell. Boxes are illustrative; rates are warp PTX operations, with event-based rates normalized using the nominal clock.</p>
         <svg class="arch-svg" viewBox="0 0 920 720" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
@@ -84,34 +85,34 @@
           <!-- Front end -->
           <rect x="310" y="20" width="300" height="44" rx="6" class="arch-box" />
           <text x="460" y="40" text-anchor="middle" class="arch-title">Instruction Fetch / Decode</text>
-          <text x="460" y="55" text-anchor="middle" class="arch-sub">1 instruction cache line = 64 B</text>
+          <text x="460" y="55" text-anchor="middle" class="arch-sub">Instruction cache line not measured</text>
 
           <rect x="360" y="78" width="200" height="34" rx="6" class="arch-box" />
           <text x="460" y="95" text-anchor="middle" class="arch-title">Warp Scheduler</text>
-          <text x="460" y="108" text-anchor="middle" class="arch-sub">4 SMSPs / SM · <tspan id="arch-warps-per-smsp">12</tspan> warps/SMSP</text>
+          <text x="460" y="108" text-anchor="middle" class="arch-sub">4 SMSPs / SM · <tspan id="arch-warps-per-smsp">—</tspan> warps/SMSP</text>
 
           <!-- SMSPs -->
           <g id="smsp-group">
             <rect x="60" y="130" width="170" height="70" rx="6" class="arch-box" />
             <text x="145" y="152" text-anchor="middle" class="arch-title">SMSP 0</text>
-            <text x="145" y="170" text-anchor="middle" class="arch-value">issue: 1 warp inst/cyc</text>
-            <text x="145" y="185" text-anchor="middle" class="arch-sub">I-buffer FFMA <tspan id="arch-ibuffer-ffma">8</tspan></text>
+            <text x="145" y="170" text-anchor="middle" class="arch-value">issue: 1 warp warp ops/cyc</text>
+            <text x="145" y="185" text-anchor="middle" class="arch-sub">FFMA saturation ILP <tspan id="arch-ibuffer-ffma">—</tspan></text>
 
             <rect x="255" y="130" width="170" height="70" rx="6" class="arch-box" />
             <text x="340" y="152" text-anchor="middle" class="arch-title">SMSP 1</text>
-            <text x="340" y="170" text-anchor="middle" class="arch-value">issue: 1 warp inst/cyc</text>
-            <text x="340" y="185" text-anchor="middle" class="arch-sub">I-buffer IMAD <tspan id="arch-ibuffer-imad">4</tspan></text>
+            <text x="340" y="170" text-anchor="middle" class="arch-value">issue: 1 warp warp ops/cyc</text>
+            <text x="340" y="185" text-anchor="middle" class="arch-sub">IMAD saturation ILP <tspan id="arch-ibuffer-imad">—</tspan></text>
 
             <rect x="450" y="130" width="170" height="70" rx="6" class="arch-box" />
             <text x="535" y="152" text-anchor="middle" class="arch-title">SMSP 2</text>
-            <text x="535" y="170" text-anchor="middle" class="arch-value">issue: 1 warp inst/cyc</text>
+            <text x="535" y="170" text-anchor="middle" class="arch-value">issue: 1 warp warp ops/cyc</text>
 
             <rect x="645" y="130" width="170" height="70" rx="6" class="arch-box" />
             <text x="730" y="152" text-anchor="middle" class="arch-title">SMSP 3</text>
-            <text x="730" y="170" text-anchor="middle" class="arch-value">issue: 1 warp inst/cyc</text>
+            <text x="730" y="170" text-anchor="middle" class="arch-value">issue: 1 warp warp ops/cyc</text>
           </g>
 
-          <text x="460" y="115" text-anchor="middle" class="arch-label" fill="var(--ink-3)">max issue = 4 warp inst/cyc/SM</text>
+          <text x="460" y="115" text-anchor="middle" class="arch-label" fill="var(--ink-3)">max issue = 4 warp warp ops/cyc/SM</text>
 
           <!-- Backend execution pipes -->
           <text x="460" y="230" text-anchor="middle" class="arch-title">Backend Execution Pipes (per SM)</text>
@@ -119,29 +120,29 @@
           <rect x="40" y="250" width="190" height="110" rx="6" class="arch-pipe" />
           <text x="135" y="270" text-anchor="middle" class="arch-title">FP32 Pipe</text>
           <text x="135" y="290" text-anchor="middle" class="arch-value">FMA/ADD/MUL</text>
-          <text x="135" y="310" text-anchor="middle" class="arch-value">lat <tspan id="arch-fp32-lat">4.5</tspan> cyc</text>
-          <text x="135" y="330" text-anchor="middle" class="arch-value">thp <tspan id="arch-fp32-thp">—</tspan> inst/cyc</text>
+          <text x="135" y="310" text-anchor="middle" class="arch-value">lat <tspan id="arch-fp32-lat">—</tspan> cyc</text>
+          <text x="135" y="330" text-anchor="middle" class="arch-value">thp <tspan id="arch-fp32-thp">—</tspan> warp ops/cyc</text>
           <text x="135" y="350" text-anchor="middle" class="arch-sub">peak <tspan id="arch-fp32-peak">—</tspan> TFLOP/s</text>
 
           <rect x="250" y="250" width="190" height="110" rx="6" class="arch-pipe" />
           <text x="345" y="270" text-anchor="middle" class="arch-title">INT32 Pipe</text>
-          <text x="345" y="290" text-anchor="middle" class="arch-value">IADD3/LEA lat <tspan id="arch-int32-fast-lat">1.8</tspan></text>
-          <text x="345" y="310" text-anchor="middle" class="arch-value">IMAD/IDP4A lat <tspan id="arch-int32-slow-lat">4.5</tspan></text>
-          <text x="345" y="330" text-anchor="middle" class="arch-value">thp <tspan id="arch-int32-thp">—</tspan> inst/cyc</text>
-          <text x="345" y="350" text-anchor="middle" class="arch-sub">fast IADD3 <tspan id="arch-iadd3-thp">—</tspan></text>
+          <text x="345" y="290" text-anchor="middle" class="arch-value">IADD lat <tspan id="arch-int32-fast-lat">—</tspan></text>
+          <text x="345" y="310" text-anchor="middle" class="arch-value">IMAD/IDP4A lat <tspan id="arch-int32-slow-lat">—</tspan></text>
+          <text x="345" y="330" text-anchor="middle" class="arch-value">thp <tspan id="arch-int32-thp">—</tspan> warp ops/cyc</text>
+          <text x="345" y="350" text-anchor="middle" class="arch-sub">IADD <tspan id="arch-iadd3-thp">—</tspan></text>
 
           <rect x="460" y="250" width="190" height="110" rx="6" class="arch-pipe" />
           <text x="555" y="270" text-anchor="middle" class="arch-title">FP64 Pipe</text>
           <text x="555" y="290" text-anchor="middle" class="arch-value">ADD/MUL/FMA</text>
-          <text x="555" y="310" text-anchor="middle" class="arch-value">lat <tspan id="arch-fp64-lat">62.9</tspan> cyc</text>
-          <text x="555" y="330" text-anchor="middle" class="arch-value">thp <tspan id="arch-fp64-thp">—</tspan> inst/cyc</text>
-          <text x="555" y="350" text-anchor="middle" class="arch-sub">DMMA lat <tspan id="arch-dmma-lat">558</tspan></text>
+          <text x="555" y="310" text-anchor="middle" class="arch-value">lat <tspan id="arch-fp64-lat">—</tspan> cyc</text>
+          <text x="555" y="330" text-anchor="middle" class="arch-value">thp <tspan id="arch-fp64-thp">—</tspan> warp ops/cyc</text>
+          <text x="555" y="350" text-anchor="middle" class="arch-sub">DMMA lat <tspan id="arch-dmma-lat">—</tspan></text>
 
           <rect x="670" y="250" width="190" height="110" rx="6" class="arch-pipe" />
           <text x="765" y="270" text-anchor="middle" class="arch-title">SFU Pipe</text>
           <text x="765" y="290" text-anchor="middle" class="arch-value">rsqrt/sin/cos/…</text>
-          <text x="765" y="310" text-anchor="middle" class="arch-value">lat <tspan id="arch-sfu-lat">18–46</tspan> cyc</text>
-          <text x="765" y="330" text-anchor="middle" class="arch-value">thp <tspan id="arch-sfu-thp">—</tspan> inst/cyc</text>
+          <text x="765" y="310" text-anchor="middle" class="arch-value">lat <tspan id="arch-sfu-lat">—</tspan> cyc</text>
+          <text x="765" y="330" text-anchor="middle" class="arch-value">thp <tspan id="arch-sfu-thp">—</tspan> warp ops/cyc</text>
 
           <rect x="145" y="380" width="190" height="100" rx="6" class="arch-pipe" />
           <text x="240" y="400" text-anchor="middle" class="arch-title">Tensor Core</text>
@@ -166,30 +167,30 @@
 
           <rect x="40" y="535" width="120" height="70" rx="6" class="arch-mem" />
           <text x="100" y="555" text-anchor="middle" class="arch-title">Registers</text>
-          <text x="100" y="575" text-anchor="middle" class="arch-value">65536 / SM</text>
-          <text x="100" y="593" text-anchor="middle" class="arch-sub">~0 cyc</text>
+          <text x="100" y="575" text-anchor="middle" class="arch-value"><tspan id="arch-register-count">—</tspan> / SM</text>
+          <text x="100" y="593" text-anchor="middle" class="arch-sub">32-bit registers</text>
 
           <line x1="160" y1="570" x2="190" y2="570" class="arch-arrow" />
           <rect x="190" y="535" width="120" height="70" rx="6" class="arch-mem" />
           <text x="250" y="555" text-anchor="middle" class="arch-title">Shared</text>
-          <text x="250" y="575" text-anchor="middle" class="arch-value">100 KB / SM</text>
+          <text x="250" y="575" text-anchor="middle" class="arch-value"><tspan id="arch-shared-size">—</tspan> KiB / SM</text>
           <text x="250" y="593" text-anchor="middle" class="arch-sub" id="arch-shared-box">lat — · BW —</text>
 
           <line x1="310" y1="570" x2="340" y2="570" class="arch-arrow" />
           <rect x="340" y="535" width="120" height="70" rx="6" class="arch-mem" />
           <text x="400" y="555" text-anchor="middle" class="arch-title">L1 Cache</text>
-          <text x="400" y="575" text-anchor="middle" class="arch-value">~48 KB / SM</text>
+          <text x="400" y="575" text-anchor="middle" class="arch-value">carveout dependent</text>
           <text x="400" y="593" text-anchor="middle" class="arch-sub" id="arch-l1-box">lat — · BW —</text>
 
           <line x1="460" y1="570" x2="490" y2="570" class="arch-arrow" />
           <rect x="490" y="535" width="120" height="70" rx="6" class="arch-mem" />
           <text x="550" y="555" text-anchor="middle" class="arch-title">L2 Cache</text>
-          <text x="550" y="575" text-anchor="middle" class="arch-value">32 MB</text>
+          <text x="550" y="575" text-anchor="middle" class="arch-value"><tspan id="arch-l2-size">—</tspan> MiB</text>
           <text x="550" y="593" text-anchor="middle" class="arch-sub" id="arch-l2-box">lat — · BW —</text>
 
           <line x1="610" y1="570" x2="640" y2="570" class="arch-arrow" />
           <rect x="640" y="535" width="120" height="70" rx="6" class="arch-mem" />
-          <text x="700" y="555" text-anchor="middle" class="arch-title">HBM / DRAM</text>
+          <text x="700" y="555" text-anchor="middle" class="arch-title">GDDR7 / DRAM</text>
           <text x="700" y="575" text-anchor="middle" class="arch-value">16 GB</text>
           <text x="700" y="593" text-anchor="middle" class="arch-sub" id="arch-hbm-box">lat — · BW —</text>
 
@@ -200,7 +201,7 @@
           <text x="850" y="593" text-anchor="middle" class="arch-sub" id="arch-pcie-box">BW —</text>
 
           <!-- Footnote -->
-          <text x="460" y="650" text-anchor="middle" class="arch-sub">Measured on <tspan id="arch-device">—</tspan> · SM count <tspan id="arch-sm-count">—</tspan> · Core clock <tspan id="arch-clock">—</tspan> MHz</text>
+          <text x="460" y="650" text-anchor="middle" class="arch-sub">Measured on <tspan id="arch-device">—</tspan> · SM count <tspan id="arch-sm-count">—</tspan> · Nominal core clock <tspan id="arch-clock">—</tspan> MHz</text>
         </svg>
       </section>
 
@@ -211,14 +212,14 @@
       </section>
 
       <section class="section-card" id="pipeline">
-        <h2>Pipeline Depth &amp; ILP</h2>
-        <p class="note">ILP sweep for FFMA and IADD3: latency at ILP=1 approximates pipeline depth; saturation reveals issue throughput.</p>
+        <h2>Dependency Chains &amp; ILP</h2>
+        <p class="note">FFMA and IMAD dependency/ILP sweeps include loop overhead. Saturation is an observed chain count; it does not measure physical pipeline stages or I-buffer depth.</p>
         <table class="metric-table" id="pipeline-table"></table>
       </section>
 
       <section class="section-card" id="coissue">
         <h2>Co-Issue</h2>
-        <p class="note">Wall-clock cycle measurement of FMA-only, IMAD-only, and interleaved FMA+IMAD dependent chains. The overlap ratio estimates independent pipe dispatch.</p>
+        <p class="note">Wall-clock cycle measurement of FMA-only, IMAD-only, and interleaved FMA+IMAD dependent chains. The overlap ratio measures latency hiding. RTX Blackwell shares FP32/INT32 execution resources; overlap does not prove simultaneous issue.</p>
         <table class="metric-table" id="coissue-table"></table>
       </section>
 
@@ -227,7 +228,7 @@
         <p class="note">Latency of a 1D <code>cp.async.bulk.tensor</code> global-to-shared load (16-byte tile) measured with an mbarrier, and global-to-shared bulk-copy bandwidth via <code>cuda::device::memcpy_async_tx</code>.</p>
         <table class="metric-table" id="tma-table"></table>
         <h3 style="margin: 1.25rem 0 0.5rem; font-size: 1rem; color: var(--ink);">TMA vs LSU (load/store path)</h3>
-        <p class="note">Same DRAM, two engines. LSU bandwidth is a stream copy counting read+write traffic; TMA bandwidth counts read-only bulk copies into shared memory. LSU latency is a 4-byte pointer chase; TMA latency is a 16-byte tile load into shared memory.</p>
+        <p class="note">Read-only streaming bandwidth is compared with TMA global-to-shared bulk-copy bandwidth. TMA uses different transfer sizes and occupancy. The hot 16-byte TMA issue/wait cost is shown separately; it is not a DRAM miss latency.</p>
         <table class="metric-table" id="tma-lsu-table"></table>
       </section>
 
@@ -321,15 +322,17 @@
         { key: ['results','topology','sm_count'], name: 'SM Count' },
         { key: ['results','topology','smsps_per_sm'], name: 'SMSPs / SM' },
         { key: ['results','topology','warps_per_smsp'], name: 'Warps / SMSP' },
-        { key: ['results','topology','warp_to_smsp_round_robin_ratio'], name: 'Warp-to-SMSP Ratio' },
-        { key: ['results','topology','warp_to_smsp_consistent'], name: 'Warp-to-SMSP Consistent' },
-        { key: ['results','topology','full_latency_hiding_warps'], name: 'Full Latency Hiding Warps' },
+        { key: ['results','topology','one_vs_four_warp_scaling_ratio'], name: 'One/Four Warp Scaling Ratio' },
+        { key: ['results','topology','four_warp_scaling_consistent'], name: 'Four-Warp Scaling Consistent' },
+        { key: ['results','topology','sweep_saturation_warps'], name: '95% Saturation Warps (single-block sweep)' },
         { key: ['results','topology','max_warps_per_sm'], name: 'Max Warps / SM' },
         { key: ['results','topology','max_threads_per_sm'], name: 'Max Threads / SM' },
         { key: ['results','topology','max_blocks_per_sm'], name: 'Max Blocks / SM' },
         { key: ['results','topology','max_threads_per_block'], name: 'Max Threads / Block' },
         { key: ['results','topology','registers_per_sm'], name: 'Registers / SM' },
         { key: ['results','topology','shared_memory_per_sm_kb'], name: 'Shared Memory / SM' },
+        { key: ['results','topology','shared_memory_per_block_default_kb'], name: 'Default Shared Memory / Block' },
+        { key: ['results','topology','shared_memory_per_block_optin_kb'], name: 'Opt-in Shared Memory / Block' },
         { key: ['results','topology','shared_memory_banks'], name: 'Shared Memory Banks' },
         { key: ['results','topology','shared_memory_bank_width_bytes'], name: 'Shared Memory Bank Width' },
         { key: ['results','topology','l2_cache_size_mb'], name: 'L2 Cache Size' },
@@ -339,16 +342,16 @@
         { key: ['results','topology','memory_controller_count'], name: 'Memory Controller Count' },
       ],
       pipeline: [
-        { key: ['results','pipeline_depth','ffma_pipeline_depth_cycles'], name: 'FFMA Pipeline Depth' },
+        { key: ['results','pipeline_depth','ffma_dependent_chain_cycles'], name: 'FFMA Dependent Chain Cost' },
         { key: ['results','pipeline_depth','ffma_ilp1_cyc_per_op'], name: 'FFMA ILP=1 Latency' },
         { key: ['results','pipeline_depth','ffma_ilp4_cyc_per_op'], name: 'FFMA ILP=4 Throughput' },
         { key: ['results','pipeline_depth','ffma_ilp16_cyc_per_op'], name: 'FFMA ILP=16 Throughput' },
-        { key: ['results','pipeline_depth','inferred_ibuffer_entries_ffma'], name: 'Inferred I-buffer Entries (FFMA)' },
-        { key: ['results','pipeline_depth','imad_pipeline_depth_cycles'], name: 'IMAD Pipeline Depth' },
+        { key: ['results','pipeline_depth','saturation_ilp_ffma'], name: 'ILP Saturation (FFMA)' },
+        { key: ['results','pipeline_depth','imad_dependent_chain_cycles'], name: 'IMAD Dependent Chain Cost' },
         { key: ['results','pipeline_depth','imad_ilp1_cyc_per_op'], name: 'IMAD ILP=1 Latency' },
         { key: ['results','pipeline_depth','imad_ilp4_cyc_per_op'], name: 'IMAD ILP=4 Throughput' },
         { key: ['results','pipeline_depth','imad_ilp16_cyc_per_op'], name: 'IMAD ILP=16 Throughput' },
-        { key: ['results','pipeline_depth','inferred_ibuffer_entries_imad'], name: 'Inferred I-buffer Entries (IMAD)' },
+        { key: ['results','pipeline_depth','saturation_ilp_imad'], name: 'ILP Saturation (IMAD)' },
       ],
       coissue: [
         { key: ['results','coissue','fma_only_cyc_per_op'], name: 'FMA Only cyc/op' },
@@ -365,8 +368,8 @@
         { key: ['results','tma','tma_g2s_load_bw_gibps'], name: 'TMA G2S Bulk-Copy Bandwidth' },
       ],
       clock: [
-        { key: ['results','clock','core_clock_mhz'], name: 'Core Clock' },
-        { key: ['results','clock','memory_clock_mhz'], name: 'Memory Clock' },
+        { key: ['results','clock','core_clock_mhz'], name: 'Nominal Core Clock' },
+        { key: ['results','clock','memory_clock_mhz'], name: 'CUDA Memory Clock Attribute' },
       ],
       memory: [
         { key: ['results','memory','dram_read_bw_gbps'], name: 'DRAM Read Bandwidth' },
@@ -380,10 +383,8 @@
         { key: ['results','memory_shared','bank_conflict_stride_32_cycles'], name: 'Smem Bank Conflict (stride 32)' },
         { key: ['results','memory_cache','l1_chase_32_kb_cycles'], name: 'L1 Chase Probe (32 KB)' },
         { key: ['results','memory_cache','l1_chase_128_kb_cycles'], name: 'L1 Chase Probe (128 KB)' },
-        { key: ['results','memory_cache','stride_128_bytes_cycles'], name: 'L2/DRAM Stride 128 B' },
       ],
       'memory-more': [
-        { key: ['results','memory_more','detected_cache_line_bytes'], name: 'Detected Cache Line' },
         { key: ['results','memory_more','stride_latency_4_bytes_cyc'], name: 'Stride 4 B Latency' },
         { key: ['results','memory_more','stride_latency_32_bytes_cyc'], name: 'Stride 32 B Latency' },
         { key: ['results','memory_more','stride_latency_128_bytes_cyc'], name: 'Stride 128 B Latency' },
@@ -402,17 +403,16 @@
         { key: ['results','instructions','mufu_rsq_latency_cyc'], name: 'MUFU RSQRT Latency' },
         { key: ['results','instructions','sin_latency_cyc'], name: 'MUFU SIN Latency' },
         { key: ['results','instructions','cos_latency_cyc'], name: 'MUFU COS Latency' },
-        { key: ['results','instructions','ex2_latency_cyc'], name: 'MUFU EX2 Latency' },
-        { key: ['results','instructions','lg2_latency_cyc'], name: 'MUFU LG2 Latency' },
+        { key: ['results','instructions','ex2_bounded_chain_cyc'], name: 'EX2 + Domain Map Chain Cost' },
+        { key: ['results','instructions','lg2_bounded_chain_cyc'], name: 'LG2 + Domain Map Chain Cost' },
         { key: ['results','instructions','rcp_latency_cyc'], name: 'MUFU RCP Latency' },
         { key: ['results','instructions','tanh_latency_cyc'], name: 'MUFU TANH Latency' },
-        { key: ['results','instructions','atoms_add_latency_cyc'], name: 'ATOMS.ADD Latency' },
         { key: ['results','instructions','fp32_add_gflops'], name: 'FP32 ADD Throughput' },
         { key: ['results','instructions','fp32_fma_gflops'], name: 'FP32 FMA Throughput' },
         { key: ['results','instructions','int32_add_gops'], name: 'INT32 ADD Throughput' },
-        { key: ['results','instructions_extended','iadd3_latency_cycles'], name: 'IADD3 Latency' },
+        { key: ['results','instructions_extended','iadd_latency_cycles'], name: 'IADD Latency' },
         { key: ['results','instructions_extended','imad_latency_cycles'], name: 'IMAD Latency' },
-        { key: ['results','instructions_extended','lea_latency_cycles'], name: 'LEA Latency' },
+        { key: ['results','instructions_extended','address_sequence_latency_cycles'], name: 'Address Arithmetic Sequence Cost' },
         { key: ['results','instructions_extended','idp4a_latency_cycles'], name: 'IDP4A Latency' },
       ],
       'more-instructions': [
@@ -420,13 +420,13 @@
         { key: ['results','instructions_more','shl_const_latency_cyc'], name: 'SHL Const Latency' },
         { key: ['results','instructions_more','shl_var_latency_cyc'], name: 'SHL Var Latency' },
         { key: ['results','instructions_more','prmt_latency_cyc'], name: 'PRMT Latency' },
-        { key: ['results','instructions_more','div_u32_latency_cyc'], name: 'DIV.U32 Latency' },
+        { key: ['results','instructions_more','div_u32_plus_add_latency_cyc'], name: 'DIV.U32 + ADD Chain Cost' },
         { key: ['results','instructions_more','add_u64_latency_cyc'], name: 'ADD.U64 Latency' },
         { key: ['results','instructions_more','mul_u64_latency_cyc'], name: 'MUL.U64 Latency' },
-        { key: ['results','instructions_more','cvt_f32_u32_latency_cyc'], name: 'CVT f32<->u32 Latency' },
-        { key: ['results','instructions_more','cvt_f32_s32_latency_cyc'], name: 'CVT f32<->s32 Latency' },
-        { key: ['results','instructions_more','cvt_f32_f64_latency_cyc'], name: 'CVT f32<->f64 Latency' },
-        { key: ['results','instructions_more','cvt_u64_u32_latency_cyc'], name: 'CVT u64<->u32 Latency' },
+        { key: ['results','instructions_more','cvt_f32_u32_roundtrip_add_cyc'], name: 'CVT f32/u32 Round Trip + ADD' },
+        { key: ['results','instructions_more','cvt_f32_s32_roundtrip_add_cyc'], name: 'CVT f32/s32 Round Trip + ADD' },
+        { key: ['results','instructions_more','cvt_f32_f64_roundtrip_cyc'], name: 'CVT f32/f64 Round Trip' },
+        { key: ['results','instructions_more','cvt_u64_u32_roundtrip_add_cyc'], name: 'CVT u64/u32 Round Trip + ADD' },
         { key: ['results','instructions_more','vadd2_latency_cyc'], name: 'VADD2 Latency' },
         { key: ['results','instructions_more','vadd4_latency_cyc'], name: 'VADD4 Latency' },
         { key: ['results','instructions_more','fma_f16x2_latency_cyc'], name: 'FMA f16x2 Latency' },
@@ -443,13 +443,13 @@
         { key: ['results','instructions','rsqrt_throughput_ipc'], name: 'RSQRT' },
         { key: ['results','instructions','sin_throughput_ipc'], name: 'SIN' },
         { key: ['results','instructions','cos_throughput_ipc'], name: 'COS' },
-        { key: ['results','instructions','ex2_throughput_ipc'], name: 'EX2' },
-        { key: ['results','instructions','lg2_throughput_ipc'], name: 'LG2' },
+        { key: ['results','instructions','ex2_bounded_sequence_throughput'], name: 'EX2 + Domain Map Sequence' },
+        { key: ['results','instructions','lg2_bounded_sequence_throughput'], name: 'LG2 + Domain Map Sequence' },
         { key: ['results','instructions','rcp_throughput_ipc'], name: 'RCP' },
         { key: ['results','instructions','tanh_throughput_ipc'], name: 'TANH' },
-        { key: ['results','instructions','iadd3_throughput_ipc'], name: 'IADD3' },
+        { key: ['results','instructions','iadd_throughput_ipc'], name: 'IADD' },
         { key: ['results','instructions','imad_throughput_ipc'], name: 'IMAD' },
-        { key: ['results','instructions','lea_throughput_ipc'], name: 'LEA' },
+        { key: ['results','instructions','address_arithmetic_throughput_ipc'], name: 'Address arithmetic' },
         { key: ['results','instructions','idp4a_throughput_ipc'], name: 'IDP4A' },
         { key: ['results','instructions','lop3_throughput_ipc'], name: 'LOP3' },
         { key: ['results','instructions','shl_var_throughput_ipc'], name: 'SHL var' },
@@ -466,7 +466,7 @@
         { key: ['results','instructions','sts_throughput_ipc'], name: 'STS' },
       ],
       tensor: [
-        { key: ['results','instructions','hmma_16816_latency_cyc'], name: 'HMMA 16x8x16 (TF32) Latency' },
+        { key: ['results','tensor_core','mma_m16n8k8_latency_cyc'], name: 'TF32 MMA m16n8k8 Latency' },
         { key: ['results','tensor_core','mma_m16n8k8_throughput_tflops'], name: 'MMA m16n8k8 Throughput' },
         { key: ['results','tensor_core_extended','fp16_m16n8k16_latency_cycles'], name: 'FP16 m16n8k16 Latency' },
         { key: ['results','tensor_core_extended','fp16_m16n8k16_throughput_TFs'], name: 'FP16 m16n8k16 Throughput' },
@@ -482,12 +482,13 @@
         { key: ['results','tensor_core_more','mma_m16n8k4_tf32_throughput_tflops'], name: 'TF32 MMA m16n8k4 Throughput' },
         { key: ['results','tensor_core_more','mma_ffma_overlap_ratio'], name: 'MMA+FFMA Overlap Ratio' },
         { key: ['results','tensor_core_more','wgmma_supported'], name: 'WGMMA Supported' },
-        { key: ['results','tensor_core_more','fp6_fp4_mma_supported'], name: 'FP6/FP4 MMA Supported' },
+        { key: ['results','tensor_core_more','fp6_fp4_mma_supported'], name: 'FP6/FP4 ISA Available (sm_120a/f)' },
+        { key: ['results','tensor_core_more','fp6_fp4_benchmark_implemented'], name: 'FP6/FP4 Benchmark Implemented' },
       ],
       atomics: [
         { key: ['results','atomics','global_atomic_add_latency_cyc'], name: 'Global atomicAdd Latency' },
-        { key: ['results','atomics','global_atomic_add_gops'], name: 'Global atomicAdd Throughput' },
-        { key: ['results','atomics','shared_atomic_add_gops'], name: 'Shared atomicAdd Throughput' },
+        { key: ['results','atomics','global_red_add_updates_gops'], name: 'Global RED.ADD Logical Update Rate' },
+        { key: ['results','atomics','shared_atomic_inc_updates_gops'], name: 'Shared Constant-Increment Logical Update Rate' },
         { key: ['results','atomics','global_atomic_cas_latency_cyc'], name: 'Global atomicCAS Latency' },
         { key: ['results','atomics','global_atomic_exch_latency_cyc'], name: 'Global atomicExch Latency' },
         { key: ['results','atomics','global_atomic_min_latency_cyc'], name: 'Global atomicMin Latency' },
@@ -499,21 +500,21 @@
         { key: ['results','barriers','syncthreads_full_cycles'], name: '__syncthreads() Full Block Latency' },
         { key: ['results','barriers','named_barrier_cycles'], name: 'bar.sync 1 Latency' },
         { key: ['results','barriers','mbarrier_cycles'], name: 'mbarrier Arrive+Wait Latency' },
-        { key: ['results','barriers','syncwarp_cycles'], name: '__syncwarp() Latency' },
+        { key: ['results','barriers','converged_syncwarp_loop_cycles'], name: 'Converged Syncwarp Loop Cost (sync elided)' },
         { key: ['results','barriers','fence_cta_cycles'], name: 'fence.acq_rel.cta Latency' },
         { key: ['results','barriers','fence_gpu_cycles'], name: 'fence.acq_rel.gpu Latency' },
         { key: ['results','barriers','fence_sys_cycles'], name: 'fence.acq_rel.sys Latency' },
       ],
       shuffle: [
         { key: ['results','warp_shuffle','shfl_idx_latency_cycles'], name: 'SHFL.SYNC.IDX Latency' },
-        { key: ['results','warp_shuffle','shfl_idx_throughput_Ginst_s'], name: 'SHFL.SYNC.IDX Throughput' },
+        { key: ['results','warp_shuffle','shfl_idx_throughput_Gwarp_inst_s'], name: 'SHFL.SYNC.IDX Warp-Instruction Throughput' },
       ],
       collectives: [
         { key: ['results','warp_collectives','vote_ballot_latency_cycles'], name: 'vote.ballot.sync Latency' },
-        { key: ['results','warp_collectives','elect_sync_latency_cycles'], name: 'elect.sync Latency' },
+        { key: ['results','warp_collectives','elect_sync_issue_cycles'], name: 'elect.sync Latency' },
         { key: ['results','warp_collectives','redux_add_latency_cycles'], name: 'redux.sync.add Latency' },
-        { key: ['results','warp_collectives','branch_cold_cyc_per_iter'], name: 'Branch Cold' },
-        { key: ['results','warp_collectives','branch_warm_cyc_per_iter'], name: 'Branch Warm' },
+        { key: ['results','warp_collectives','first_iteration_skip_cyc_per_iter'], name: 'First Iteration Skips Work' },
+        { key: ['results','warp_collectives','always_work_cyc_per_iter'], name: 'Always Executes Work' },
         { key: ['results','warp_collectives','pred_split_25_cyc_per_iter'], name: 'Predicated 25% Active' },
         { key: ['results','warp_collectives','pred_split_50_cyc_per_iter'], name: 'Predicated 50% Active' },
         { key: ['results','warp_collectives','pred_split_75_cyc_per_iter'], name: 'Predicated 75% Active' },
@@ -525,21 +526,22 @@
         { key: ['results','warp_collectives','divergence_32way_cyc_per_iter'], name: 'Divergence: 32-way' },
         { key: ['results','warp_collectives','ffma_ipc_w1'], name: 'FFMA IPC W=1' },
         { key: ['results','warp_collectives','ffma_ipc_w16'], name: 'FFMA IPC W=16' },
-        { key: ['results','warp_collectives','iadd3_ipc_w1'], name: 'IADD3 IPC W=1' },
-        { key: ['results','warp_collectives','iadd3_ipc_w16'], name: 'IADD3 IPC W=16' },
+        { key: ['results','warp_collectives','iadd_ipc_w1'], name: 'IADD IPC W=1' },
+        { key: ['results','warp_collectives','iadd_ipc_w16'], name: 'IADD IPC W=16' },
       ],
       pcie: [
         { key: ['results','pcie','htod_bandwidth_GiB_s'], name: 'HtoD Pinned Bandwidth' },
         { key: ['results','pcie','dtoh_bandwidth_GiB_s'], name: 'DtoH Pinned Bandwidth' },
-        { key: ['results','pcie','kernel_launch_warm_us'], name: 'Kernel Launch Latency (warm)' },
-        { key: ['results','pcie','kernel_launch_cold_us'], name: 'Kernel Launch Latency (cold)' },
+        { key: ['results','pcie','kernel_warm_enqueue_us'], name: 'Warm Empty-Kernel Enqueue Cost' },
+        { key: ['results','pcie','kernel_first_enqueue_us'], name: 'First Empty-Kernel Enqueue Cost' },
         { key: ['results','pcie','device_count'], name: 'GPU Device Count' },
         { key: ['results','pcie','p2p_available'], name: 'P2P Available' },
-        { key: ['results','pcie','um_page_fault_latency_us'], name: 'Unified Memory First-Touch Latency' },
+        { key: ['results','pcie','um_first_touch_end_to_end_us'], name: 'Unified Memory First-Touch End-to-End Cost' },
       ],
       cluster: [
         { key: ['results','cluster','max_cluster_size'], name: 'Max Cluster Size' },
         { key: ['results','cluster','launch_test_size'], name: 'Launch Test Size' },
+        { key: ['results','cluster','dsmem_read_latency_cyc'], name: 'DSMEM Dependent Remote Read' },
         { key: ['results','cluster','cluster_barrier_2block_cyc'], name: 'Cluster Barrier Latency (2-block)' },
         { key: ['results','cluster','cluster_barrier_max_cyc'], name: 'Cluster Barrier Latency (max)' },
       ],
@@ -550,16 +552,11 @@
     const TMA_LSU_COMPARE = [
       {
         name: 'DRAM Bandwidth (GiB/s)',
-        lsu: { key: ['results','memory_dram','copy_max_bw_gibps'], label: 'stream copy, r+w counted' },
+        lsu: { key: ['results','memory_dram','read_bw_gibps'], label: 'stream read, read traffic counted' },
         tma: { key: ['results','tma','tma_g2s_load_bw_gibps'], label: 'bulk copy G2S, read only' },
         higherBetter: true,
       },
-      {
-        name: 'DRAM Load Latency (cycles)',
-        lsu: { key: ['results','memory','dram_latency_cyc'], label: 'pointer chase 4B' },
-        tma: { key: ['results','tma','tma_1d_load_latency_cyc'], label: '1D tile 16B + mbarrier' },
-        higherBetter: false,
-      },
+
     ];
 
     function getPath(obj, path) {
@@ -592,20 +589,23 @@
     function renderArchDiagram(data) {
       setText('arch-device', data.device || 'Unknown');
       setText('arch-sm-count', data.sm_count || '?');
+      setText('arch-shared-size', fmt(v(data, ['results','topology','shared_memory_per_sm_kb'])));
+      setText('arch-register-count', fmt(v(data, ['results','topology','registers_per_sm'])));
+      setText('arch-l2-size', fmt(v(data, ['results','topology','l2_cache_size_mb'])));
       setText('arch-clock', fmt((data.clock_khz || 0) / 1000));
 
       setText('arch-warps-per-smsp', fmt(v(data, ['results','topology','warps_per_smsp'])));
-      setText('arch-ibuffer-ffma', fmt(v(data, ['results','pipeline_depth','inferred_ibuffer_entries_ffma'])));
-      setText('arch-ibuffer-imad', fmt(v(data, ['results','pipeline_depth','inferred_ibuffer_entries_imad'])));
+      setText('arch-ibuffer-ffma', fmt(v(data, ['results','pipeline_depth','saturation_ilp_ffma'])));
+      setText('arch-ibuffer-imad', fmt(v(data, ['results','pipeline_depth','saturation_ilp_imad'])));
 
       setText('arch-fp32-lat', fmt(v(data, ['results','instructions','ffma_latency_cyc'])));
       setText('arch-fp32-thp', fmt(v(data, ['results','instructions','fp32_fma_throughput_ipc'])));
       setText('arch-fp32-peak', fmt(v(data, ['results','peak','fp32_tflops'])));
 
-      setText('arch-int32-fast-lat', fmt(v(data, ['results','instructions_extended','iadd3_latency_cycles'])));
+      setText('arch-int32-fast-lat', fmt(v(data, ['results','instructions_extended','iadd_latency_cycles'])));
       setText('arch-int32-slow-lat', fmt(v(data, ['results','instructions_extended','imad_latency_cycles'])));
       setText('arch-int32-thp', fmt(v(data, ['results','instructions','int32_add_throughput_ipc'])));
-      setText('arch-iadd3-thp', fmt(v(data, ['results','instructions','iadd3_throughput_ipc'])));
+      setText('arch-iadd3-thp', fmt(v(data, ['results','instructions','iadd_throughput_ipc'])));
 
       setText('arch-fp64-lat', fmt(v(data, ['results','instructions','fp64_add_latency_cyc'])));
       setText('arch-fp64-thp', fmt(v(data, ['results','instructions','fp64_add_throughput_ipc'])));
@@ -646,7 +646,7 @@
       setText('arch-l2-box', 'lat ' + fmt(l2Lat) + ' cyc · ' + fmt(l2Bw) + ' GiB/s');
 
       const dramLat = v(data, ['results','memory','dram_latency_cyc']);
-      const dramBw = v(data, ['results','memory_dram','copy_max_bw_gibps']);
+      const dramBw = v(data, ['results','memory_dram','read_bw_gibps']);
       setText('arch-hbm-box', 'lat ' + fmt(dramLat) + ' cyc · ' + fmt(dramBw) + ' GiB/s');
 
       const pcieBw = v(data, ['results','pcie','htod_bandwidth_GiB_s']);
@@ -661,9 +661,9 @@
         { lbl: 'Device', val: data.device || 'Unknown' },
         { lbl: 'Architecture', val: data.architecture || 'Unknown' },
         { lbl: 'SM Count', val: (data.sm_count || '?') + '<small>enabled</small>' },
-        { lbl: 'Core Clock', val: fmt((data.clock_khz || 0) / 1000) + '<small>MHz</small>' },
+        { lbl: 'Nominal Core Clock', val: fmt((data.clock_khz || 0) / 1000) + '<small>MHz</small>' },
         { lbl: 'Memory Bus', val: (data.memory_bus_width_bits || '?') + '<small>bit</small>' },
-        { lbl: 'Memory Clock', val: fmt((data.memory_clock_khz || 0) / 1000) + '<small>MHz</small>' },
+        { lbl: 'CUDA Memory Clock', val: fmt((data.memory_clock_khz || 0) / 1000) + '<small>MHz</small>' },
       ];
       meta.innerHTML = items.map(i => `
         <div class="meta-cell"><div class="lbl">${i.lbl}</div><div class="val">${i.val}</div></div>

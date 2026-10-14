@@ -1,0 +1,303 @@
+=== Device Info ===
+Device ID           : 0
+Name                : NVIDIA GeForce RTX 5060 Ti
+Compute Capability  : 12.0
+SM Count            : 36
+Warp Size           : 32
+Max Warps/SM        : 48
+Max Threads/SM      : 1536
+Max Threads/Block   : 1024
+Max Blocks/SM       : 24
+Registers/SM        : 65536
+Registers/Thread    : 255
+Shared Memory/SM    : 100 KiB
+Shared/Block default: 48 KiB
+Shared/Block opt-in : 99 KiB
+Global Memory       : 15.93 GiB
+Core Clock (nominal) : 2.632 GHz
+Memory Clock (CUDA)  : 14.001 GHz
+Memory Bus Width    : 128 bit
+L2 Cache Size       : 32768 KiB
+
+=== Derived / Theoretical Limits ===
+Peak FP32 (theoretical, all SMs) : 24.26 TFLOP/s
+Peak FP64 (consumer estimate)    : 0.38 TFLOP/s
+Peak Memory BW (theoretical)     : 448.03 GB/s
+
+=== Topology Values Not Exposed by Runtime ===
+GPC count             : N/A (not exposed)
+TPC count             : N/A (not exposed)
+L2 partition count    : N/A (not exposed)
+Memory controller count: N/A (not exposed)
+=== Topology / SMSP Probes ===
+  Warp-to-SMSP concurrent scaling: 1-warp 4.48 cyc/FMA, 4-warps 1.12 cyc/FMA, ratio 4.02 (consistent)
+  SMSPs / SM            : 4
+  Warps / SMSP (max)    : 12
+  Sweep 95% saturation   : 20 warps/SM (4.46 cyc/FMA baseline)
+    W= 1 -> 4.46 cyc/FMA
+    W= 4 -> 4.46 cyc/FMA
+    W= 5 -> 4.77 cyc/FMA
+    W= 8 -> 4.77 cyc/FMA
+    W=12 -> 4.85 cyc/FMA
+    W=16 -> 5.15 cyc/FMA
+    W=20 -> 6.16 cyc/FMA
+    W=24 -> 7.27 cyc/FMA
+    W=32 -> 9.63 cyc/FMA
+=== Pipeline Depth / ILP Sweeps ===
+  FFMA ILP= 1: 4.455 cyc/op (0.224 op/cyc)
+  FFMA ILP= 2: 2.259 cyc/op (0.443 op/cyc)
+  FFMA ILP= 4: 1.224 cyc/op (0.817 op/cyc)
+  FFMA ILP= 8: 1.097 cyc/op (0.912 op/cyc)
+  FFMA ILP=16: 1.048 cyc/op (0.954 op/cyc)
+  IMAD ILP= 1: 4.456 cyc/op (0.224 op/cyc)
+  IMAD ILP= 2: 2.291 cyc/op (0.436 op/cyc)
+  IMAD ILP= 4: 2.146 cyc/op (0.466 op/cyc)
+  IMAD ILP= 8: 2.074 cyc/op (0.482 op/cyc)
+  IMAD ILP=16: 2.037 cyc/op (0.491 op/cyc)
+  Dependent chain cost: FFMA=4.5 cyc, IMAD=4.5 cyc
+  ILP within 10% of best measured throughput: FFMA=8 chains, IMAD=4 chains
+=== Global Memory Benchmarks (median of 5) ===
+    16 MiB: copy 583.37 GiB/s (read+write), read 1066.12 GiB/s
+    64 MiB: copy 351.22 GiB/s (read+write), read 362.83 GiB/s
+   128 MiB: copy 352.17 GiB/s (read+write), read 382.03 GiB/s
+   256 MiB: copy 355.32 GiB/s (read+write), read 389.07 GiB/s
+  DRAM random chase (.cg, 256 MiB): 915.32 cycles (347.77 nominal ns)
+=== Memory Subsystem Probes ===
+  Stride latency probe (cycles per streaming iteration):
+    stride   4 B -> 122.92 cycles/access
+    stride   8 B -> 151.77 cycles/access
+    stride  16 B -> 168.34 cycles/access
+    stride  32 B -> 169.21 cycles/access
+    stride  64 B -> 170.31 cycles/access
+    stride 128 B -> 171.91 cycles/access
+    stride 256 B -> 172.24 cycles/access
+  Coalescing probe (cycles per warp streaming iteration):
+    stride   4 B -> 170.51 cycles per warp-load
+    stride   8 B -> 170.89 cycles per warp-load
+    stride  16 B -> 177.22 cycles per warp-load
+    stride  32 B -> 188.35 cycles per warp-load
+    stride  64 B -> 192.59 cycles per warp-load
+    stride 128 B -> 199.62 cycles per warp-load
+  L1 per-warp BW: 24.82 B/cyc, 60.83 GiB/s
+  L2 aggregate BW: 2019.08 GiB/s
+  Async copy 16 B latency: 58.24 cycles
+=== Shared Memory Benchmarks ===
+  Shared vector load BW: 12255.44 GiB/s
+  Shared dependent broadcast load latency: 28.01 cycles
+    stride  1: 28.01 cycles/load (one warp)
+    stride  2: 30.01 cycles/load (one warp)
+    stride  3: 28.01 cycles/load (one warp)
+    stride  4: 34.01 cycles/load (one warp)
+    stride  5: 28.01 cycles/load (one warp)
+    stride  6: 30.01 cycles/load (one warp)
+    stride  7: 28.01 cycles/load (one warp)
+    stride  8: 42.01 cycles/load (one warp)
+    stride  9: 28.01 cycles/load (one warp)
+    stride 10: 30.01 cycles/load (one warp)
+    stride 11: 28.01 cycles/load (one warp)
+    stride 12: 34.01 cycles/load (one warp)
+    stride 13: 28.01 cycles/load (one warp)
+    stride 14: 30.01 cycles/load (one warp)
+    stride 15: 28.01 cycles/load (one warp)
+    stride 16: 58.01 cycles/load (one warp)
+    stride 17: 28.01 cycles/load (one warp)
+    stride 18: 30.01 cycles/load (one warp)
+    stride 19: 28.01 cycles/load (one warp)
+    stride 20: 34.01 cycles/load (one warp)
+    stride 21: 28.01 cycles/load (one warp)
+    stride 22: 30.01 cycles/load (one warp)
+    stride 23: 28.01 cycles/load (one warp)
+    stride 24: 42.01 cycles/load (one warp)
+    stride 25: 28.01 cycles/load (one warp)
+    stride 26: 30.01 cycles/load (one warp)
+    stride 27: 28.01 cycles/load (one warp)
+    stride 28: 34.01 cycles/load (one warp)
+    stride 29: 28.01 cycles/load (one warp)
+    stride 30: 30.01 cycles/load (one warp)
+    stride 31: 28.01 cycles/load (one warp)
+    stride 32: 90.01 cycles/load (one warp)
+=== Cache Benchmarks (random dependent loads, median of 5) ===
+  L1 capacity sweep (.ca, one thread, full 128 B slot cycle):
+       4 KiB -> 44.03 cycles/access
+       8 KiB -> 44.03 cycles/access
+      16 KiB -> 44.03 cycles/access
+      32 KiB -> 44.03 cycles/access
+      64 KiB -> 44.03 cycles/access
+     128 KiB -> 282.46 cycles/access
+     256 KiB -> 347.42 cycles/access
+  L2 (.cg, 8192 KiB): 561.84 cycles/access
+=== Compute Throughput ===
+  FP32 ADD       : 11425.16 GFLOP/s
+  FP32 MUL       : 11526.33 GFLOP/s
+  FP32 FMA       : 23123.27 GFLOP/s
+  INT32 ADD      : 5154.82 GOP/s
+  INT32 MUL      : 6299.86 GOP/s
+  FP64 ADD       : 174.85 GFLOP/s
+  RSQRT          : 1634.57 GOP/s
+  SIN            : 1626.26 GOP/s
+=== Compute Latency ===
+  FP32 ADD       : 4.30 cycles (1.63 nominal ns)
+  FP32 MUL       : 4.30 cycles (1.63 nominal ns)
+  FP32 FMA       : 4.45 cycles (1.69 nominal ns)
+  INT32 ADD      : 5.20 cycles (1.98 nominal ns)
+  INT32 MUL      : 4.23 cycles (1.61 nominal ns)
+  FP64 ADD       : 63.45 cycles (24.11 nominal ns)
+  FP64 FMA       : 63.54 cycles (24.14 nominal ns)
+  RSQRT          : 18.01 cycles (6.84 nominal ns)
+  SIN            : 22.07 cycles (8.39 nominal ns)
+  COS            : 22.07 cycles (8.39 nominal ns)
+  EX2 + domain map: 24.04 cycles (9.13 nominal ns)
+  LG2 + domain map: 24.04 cycles (9.13 nominal ns)
+  RCP            : 23.01 cycles (8.74 nominal ns)
+  TANH           : 18.01 cycles (6.84 nominal ns)
+=== Pipe Co-Issue Probes ===
+  FMA only                 : 73138.00 cycles (16384 iters)
+  IMAD only                : 75246.00 cycles (16384 iters)
+  FMA+IMAD mixed           : 76265.00 cycles (16384 iters)
+  FMA cyc/op: 4.464, IMAD cyc/op: 4.593, mixed cyc/pair: 4.655
+  FMA+IMAD overlap ratio: 98.61%
+  Throughput-based co-issue:
+    FMA IPC: 3.80, IMAD IPC: 2.00
+    mixed total IPC: 3.90  (102.6% of max single)
+=== TMA (cp.async.bulk.tensor) Probes ===
+  TMA 1D 16-byte load issue/wait cost: 425.53 cycles (108935 cycles / 256 iters)
+  TMA G2S bulk-copy BW: 391.47 GiB/s (252.0 MB in 0.629 ms, 288 blocks x 56 x 16 KiB)
+=== Instruction Throughput (inst/cycle per SM) ===
+  FP32 FMA throughput: 1.86 inst/cycle
+  FP32 ADD throughput: 1.86 inst/cycle
+  FP32 MUL throughput: 1.86 inst/cycle
+  INT32 ADD throughput: 1.89 inst/cycle
+  INT32 MUL throughput: 2.03 inst/cycle
+  FP64 ADD throughput: 0.06 inst/cycle
+  RSQRT throughput: 0.54 inst/cycle
+  SIN throughput: 0.54 inst/cycle
+  COS throughput: 0.55 inst/cycle
+  EX2 + domain map throughput: 0.55 inst/cycle
+  LG2 + domain map throughput: 0.55 inst/cycle
+  RCP throughput: 0.55 inst/cycle
+  TANH throughput: 0.55 inst/cycle
+  IADD (add.s32) throughput: 1.89 inst/cycle
+  IMAD throughput: 2.02 inst/cycle
+  address arithmetic throughput: 2.26 inst/cycle
+  IDP4A throughput: 2.03 inst/cycle
+  LOP3 throughput: 2.03 inst/cycle
+  SHL var throughput: 2.03 inst/cycle
+  PRMT throughput: 2.05 inst/cycle
+  DIV u32 throughput: 0.26 inst/cycle
+  ADD u64 throughput: 1.37 inst/cycle
+  MUL u64 throughput: 0.50 inst/cycle
+  VADD2 throughput: 1.01 inst/cycle
+  VADD4 throughput: 1.44 inst/cycle
+  FMA f16x2 throughput: 2.12 inst/cycle
+  FMA bf16x2 throughput: 2.12 inst/cycle
+  FMA f32x2 throughput: 1.24 inst/cycle
+  LDG throughput: 1.59 inst/cycle
+  STS throughput: 0.55 inst/cycle
+=== Atomic Benchmarks ===
+  Global no-return RED.ADD update rate (contended): 79.76 GOPS/s
+  Shared constant-increment update rate: 1203.42 GOPS/s
+  Global atomicAdd latency: 382.91 cycles (145.48 nominal ns)
+  Global atomicCAS latency: 372.95 cycles (141.70 nominal ns)
+  Global atomicExch latency: 371.87 cycles (141.29 nominal ns)
+  Global atomicMin latency: 371.61 cycles (141.19 nominal ns)
+  Global atomicMax latency: 371.65 cycles (141.20 nominal ns)
+  Block reduce (tree) latency: 718.10 cycles (272.83 nominal ns)
+=== Tensor Core (MMA) Benchmarks ===
+  MMA m16n8k8 latency: 34.54 cycles (13.12 nominal ns)
+  MMA m16n8k8 throughput: 24.80 TFLOP/s
+=== Tensor Core (More Shapes) ===
+  DMMA m8n8k4 (FP64) latency: 558.28 cycles (212.11 nominal ns)
+  DMMA m8n8k4 (FP64) throughput: 0.361 TFLOP/s
+  MMA m16n8k4 (TF32) latency: 35.10 cycles (13.33 nominal ns)
+  MMA m16n8k4 (TF32) throughput: 11.28 TFLOP/s
+  FMA+TFMA overlap: FMA=4.52 cyc, MMA=35.07 cyc, mixed=34.80 cyc, overlap=100.00%
+=== Occupancy / Launch Limits ===
+  Block size   64 -> max blocks/SM: 24
+  Block size  128 -> max blocks/SM: 12
+  Block size  256 -> max blocks/SM: 6
+  Block size  512 -> max blocks/SM: 3
+  Block size 1024 -> max blocks/SM: 1
+  Occupancy kernel 144 blocks x 256 threads: 0.222 ms
+=== Warp Shuffle ===
+  shfl.sync.idx latency: 31.02 cycles (11.79 nominal ns)
+  shfl.sync.idx throughput: 51.91 Gwarp-inst/s
+=== Warp Collectives & Divergence ===
+  vote.ballot.sync latency : 18.06 cycles
+  elect.sync repeated issue: 23.03 cycles
+  redux.sync.add latency   : 48.49 cycles
+  Divergence cost model:
+  uniform                  : 4.73 cycles/iter
+  2-way                    : 8.33 cycles/iter
+  4-way                    : 110.14 cycles/iter
+  8-way                    : 278.20 cycles/iter
+  16-way                   : 614.14 cycles/iter
+  32-way                   : 1286.17 cycles/iter
+  first iteration skip     : 5.41 cycles
+  always work              : 4.51 cycles
+  Different-loop timing delta: 0.90 cycles
+  Predicated divergence 25% active: 5.84 cycles/iter
+  Predicated divergence 50% active: 5.84 cycles/iter
+  Predicated divergence 75% active: 5.84 cycles/iter
+  IPC vs active warps/SM (ILP=4):
+    ffma W= 1: IPC=0.78
+    ffma W= 4: IPC=3.14
+    ffma W= 8: IPC=3.67
+    ffma W=16: IPC=3.68
+    ffma W=32: IPC=3.69
+    iadd W= 1: IPC=0.14
+    iadd W= 4: IPC=0.57
+    iadd W= 8: IPC=1.14
+    iadd W=16: IPC=1.68
+    iadd W=32: IPC=2.05
+=== Barriers ===
+  __syncthreads() latency (1 warp):  14.67 cycles (5.58 nominal ns)
+  __syncthreads() latency (256 threads): 28.67 cycles (10.89 nominal ns)
+  bar.sync 1 latency:                14.67 cycles (5.58 nominal ns)
+  mbarrier arrive+wait latency:      65.03 cycles (24.71 nominal ns)
+  Converged syncwarp loop cost:              1.83 cycles (0.69 nominal ns)
+  fence.acq_rel.cta latency:         10.79 cycles (4.10 nominal ns)
+  fence.acq_rel.gpu latency:         284.73 cycles (108.18 nominal ns)
+  fence.acq_rel.sys latency:         949.06 cycles (360.59 nominal ns)
+=== Extended Instruction Latency ===
+  IADD (add.s32) latency: 5.20 cycles (1.98 nominal ns)
+  IMAD       latency: 4.39 cycles (1.67 nominal ns)
+  address sequence latency: 23.01 cycles (8.74 nominal ns)
+  IDP4A      latency: 4.30 cycles (1.63 nominal ns)
+=== More Instruction Latencies ===
+  LOP3                : 23.03 cycles (8.75 nominal ns)
+  SHL const           : 23.03 cycles (8.75 nominal ns)
+  SHL var             : 23.03 cycles (8.75 nominal ns)
+  PRMT                : 23.03 cycles (8.75 nominal ns)
+  DIV u32             : 69.21 cycles (26.29 nominal ns)
+  ADD u64             : 23.03 cycles (8.75 nominal ns)
+  MUL u64             : 25.03 cycles (9.51 nominal ns)
+  CVT f32<->u32       : 36.03 cycles (13.69 nominal ns)
+  CVT f32<->s32       : 36.03 cycles (13.69 nominal ns)
+  CVT f32<->f64       : 108.03 cycles (41.04 nominal ns)
+  CVT u64<->u32       : 23.03 cycles (8.75 nominal ns)
+  VADD2               : 23.03 cycles (8.75 nominal ns)
+  VADD4               : 23.03 cycles (8.75 nominal ns)
+  FMA f16x2           : 23.03 cycles (8.75 nominal ns)
+  FMA bf16x2          : 23.03 cycles (8.75 nominal ns)
+  FMA f32x2           : 23.04 cycles (8.75 nominal ns)
+=== Tensor Core Extended (MMA) ===
+  fp16_m16n8k16      latency: 29.82 cycles (11.33 nominal ns)
+  fp16_m16n8k16      throughput: 99.92 TFLOP/s
+  bf16_m16n8k16      latency: 34.54 cycles (13.12 nominal ns)
+  bf16_m16n8k16      throughput: 52.27 TFLOP/s
+  fp8_m16n8k32       latency: 34.89 cycles (13.25 nominal ns)
+  fp8_m16n8k32       throughput: 104.56 TFLOP/s
+  int8_m16n8k32      latency: 27.82 cycles (10.57 nominal ns)
+  int8_m16n8k32      throughput: 202.54 TOP/s
+=== PCIe / Launch Latency ===
+  First empty-kernel enqueue cost: 33.836 us
+  Warm empty-kernel enqueue cost (avg of 1000): 2.562 us
+  HtoD pinned bandwidth: 24.93 GiB/s
+  DtoH pinned bandwidth: 24.85 GiB/s
+  Device count: 1, P2P available: false
+  Unified Memory first-touch end-to-end time: 153.381 us
+=== Cluster ===
+  Cluster launch verified: size=8
+  Cluster barrier (2 blocks): 382.46 cycles
+  Cluster barrier (8 blocks): 384.17 cycles
+  DSMEM dependent remote read: 211.00 cycles

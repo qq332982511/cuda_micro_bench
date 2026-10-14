@@ -7,7 +7,7 @@
 
 namespace cmb {
 
-// Cache-line / stride probe: each warp reads elements separated by 'stride_bytes'.
+// Streaming stride probe: each warp reads elements separated by 'stride_bytes'.
 __global__ void kernel_stride_latency(const float *data, int n, int stride_elems,
                                       int iters, unsigned int *cycles) {
   int tid = threadIdx.x;
@@ -15,14 +15,14 @@ __global__ void kernel_stride_latency(const float *data, int n, int stride_elems
   float acc = 0.0f;
   CMB_CLOCK_START();
   for (int r = 0; r < iters; ++r) {
-    acc += data[idx];
+    float v;
+    asm volatile("ld.global.ca.f32 %0, [%1];" : "=f"(v) : "l"(data + idx) : "memory");
+    acc += v;
     idx = (idx + stride_elems) % n;
   }
   CMB_CLOCK_STOP();
-  if (acc < 0.0f)
-    cycles[tid] = (unsigned int)acc;
-  else
-    cycles[tid] = t1 - t0;
+  CMB_DEPENDENCY_GUARD(acc);
+  cycles[tid] = t1 - t0;
 }
 
 // Coalescing probe: all threads read with a per-thread stride, one warp.
@@ -33,14 +33,14 @@ __global__ void kernel_coalescing(const float *data, int n, int stride_elems,
   float acc = 0.0f;
   CMB_CLOCK_START();
   for (int r = 0; r < iters; ++r) {
-    acc += data[idx];
+    float v;
+    asm volatile("ld.global.ca.f32 %0, [%1];" : "=f"(v) : "l"(data + idx) : "memory");
+    acc += v;
     idx = (idx + 32 * stride_elems) % n; // each iteration all 32 lanes move forward
   }
   CMB_CLOCK_STOP();
-  if (acc < 0.0f)
-    cycles[tid] = (unsigned int)acc;
-  else
-    cycles[tid] = t1 - t0;
+  CMB_DEPENDENCY_GUARD(acc);
+  cycles[tid] = t1 - t0;
 }
 
 // L1 per-warp bandwidth: single warp reads 128-bit vectors from an L1-resident
@@ -52,14 +52,16 @@ __global__ void kernel_l1_per_warp_bw(const float4 *data, int n, int iters,
   float4 acc = make_float4(0.0f, 0.0f, 0.0f, 0.0f);
   CMB_CLOCK_START();
   for (int r = 0; r < iters; ++r) {
-    acc = data[idx];
-    idx = (idx + 32) % n;
+    float4 value;
+    asm volatile("ld.global.ca.v4.f32 {%0,%1,%2,%3}, [%4];"
+                 : "=f"(value.x), "=f"(value.y), "=f"(value.z), "=f"(value.w)
+                 : "l"(data + idx) : "memory");
+    acc.x += value.x; acc.y += value.y; acc.z += value.z; acc.w += value.w;
+    idx = (idx + 32) & (n - 1);
   }
   CMB_CLOCK_STOP();
-  if (acc.x < 0.0f)
-    cycles[tid] = (unsigned int)acc.x;
-  else
-    cycles[tid] = t1 - t0;
+  CMB_DEPENDENCY_GUARD(acc.x + acc.y + acc.z + acc.w);
+  cycles[tid] = t1 - t0;
 }
 
 // L2 aggregate bandwidth: many warps/SMs stream 128-bit loads from an L2-sized
@@ -72,7 +74,11 @@ __global__ void kernel_l2_aggregate_bw(const float4 *data, int n, int iters,
   int idx = (bid * blockDim.x + tid) % n;
   float4 acc = make_float4(0.0f, 0.0f, 0.0f, 0.0f);
   for (int r = 0; r < iters; ++r) {
-    acc = data[idx];
+    float4 value;
+    asm volatile("ld.global.cg.v4.f32 {%0,%1,%2,%3}, [%4];"
+                 : "=f"(value.x), "=f"(value.y), "=f"(value.z), "=f"(value.w)
+                 : "l"(data + idx) : "memory");
+    acc.x += value.x; acc.y += value.y; acc.z += value.z; acc.w += value.w;
     idx = (idx + nthreads) % n;
   }
   out[bid * blockDim.x + tid] = acc.x + acc.y + acc.z + acc.w;
@@ -89,13 +95,12 @@ __global__ void kernel_async_copy_latency(const float *src, int iters,
   CMB_CLOCK_START();
   for (int r = 0; r < iters; ++r) {
     asm volatile("cp.async.ca.shared.global [%0], [%1], 16;"
-                 :: "l"(sptr), "l"(gptr));
+                 :: "r"(static_cast<unsigned int>(__cvta_generic_to_shared(sptr))), "l"(gptr));
     asm volatile("cp.async.commit_group;");
-    asm volatile("cp.async.wait_group 0;");
+    asm volatile("cp.async.wait_group 0;" ::: "memory");
   }
   CMB_CLOCK_STOP();
-  if (smem[0] < 0.0f)
-    t1 = t0;
+  CMB_DEPENDENCY_GUARD(smem[0]);
   cycles[0] = t1 - t0;
 }
 
@@ -114,9 +119,8 @@ void benchmark_memory_more() {
   std::vector<unsigned int> h_cycles(32);
 
   // 1. Cache-line / stride latency probe.
-  printf("  Stride latency probe (cycles per access):\n");
+  printf("  Stride latency probe (cycles per streaming iteration):\n");
   int base_iters = 1 << 14;
-  std::vector<std::pair<int, double>> stride_results;
   for (int stride_bytes = 4; stride_bytes <= 256; stride_bytes *= 2) {
     int stride_elems = stride_bytes / sizeof(float);
     int iters = base_iters;
@@ -139,29 +143,12 @@ void benchmark_memory_more() {
     char key[64];
     snprintf(key, sizeof(key), "stride_latency_%d_bytes_cyc", stride_bytes);
     g_results.log("memory_more", key, cyc, "cycles");
-    stride_results.emplace_back(stride_bytes, cyc);
   }
-  // Detect cache line: find the first stride where latency rises >30% above
-  // the minimum seen so far; the cache line is the previous stride.
-  double min_cyc = 1e9;
-  int detected_line = stride_results.empty() ? 0 : stride_results.front().first;
-  for (size_t i = 0; i < stride_results.size(); ++i) {
-    double cyc = stride_results[i].second;
-    if (cyc < min_cyc) {
-      min_cyc = cyc;
-      detected_line = stride_results[i].first;
-    }
-    if (i > 0 && cyc > min_cyc * 1.30) {
-      detected_line = stride_results[i - 1].first;
-      break;
-    }
-  }
-  g_results.log("memory_more", "detected_cache_line_bytes",
-                (double)detected_line, "bytes");
-  printf("  Detected cache-line stride <= %d B\n", detected_line);
+  // Streaming stride curves combine coalescing, MLP and cache effects; they
+  // cannot identify a cache line size. Keep raw measurements only.
 
   // 2. Coalescing probe: varying per-thread stride, fixed forward step.
-  printf("  Coalescing probe (cycles per 32-load warp):\n");
+  printf("  Coalescing probe (cycles per warp streaming iteration):\n");
   for (int stride_bytes = 4; stride_bytes <= 128; stride_bytes *= 2) {
     int stride_elems = stride_bytes / sizeof(float);
     int iters = base_iters;
@@ -203,20 +190,21 @@ void benchmark_memory_more() {
     double cyc = (double)sum / 32.0 / iters;
     double bytes_per_iter = 32.0 * sizeof(float4);
     double bytes_per_cyc = bytes_per_iter / cyc;
-    double gbps = bytes_per_cyc * (info.clock_rate_khz * 1000.0) / 1e9;
+    double gbps = bytes_per_cyc * (info.clock_rate_khz * 1000.0) / (1024.0 * 1024.0 * 1024.0);
     printf("  L1 per-warp BW: %.2f B/cyc, %.2f GiB/s\n", bytes_per_cyc, gbps);
     g_results.log("memory_more", "l1_per_warp_bw_bytes_per_cyc", bytes_per_cyc,
                   "B/cyc");
-    g_results.log("memory_more", "l1_per_warp_bw_gibps", gbps, "GiB/s");
+    g_results.log("memory_more", "l1_per_warp_bw_gibps", gbps, "nominal GiB/s");
     CUDA_CHECK(cudaFree(d_l1));
   }
 
   // 4. L2 aggregate bandwidth (multi-SM, L2-sized buffer).
   {
-    const size_t l2_bytes = 8ULL * 1024 * 1024;
+    const size_t l2_bytes = std::min<size_t>(8ULL << 20, info.l2_cache_size / 4);
     float4 *d_l2;
     CUDA_CHECK(cudaMalloc(&d_l2, l2_bytes));
-    CUDA_CHECK(cudaMemset(d_l2, 0, l2_bytes));
+    kernel_init_stream<<<info.sm_count * 4, 256>>>(reinterpret_cast<unsigned int *>(d_l2), l2_bytes / 4);
+    CUDA_CHECK(cudaGetLastError());
     int l2_n = l2_bytes / sizeof(float4);
     int blocks = info.sm_count * 4;
     int threads = 256;
@@ -224,14 +212,21 @@ void benchmark_memory_more() {
     float *d_out;
     CUDA_CHECK(cudaMalloc(&d_out, blocks * threads * sizeof(float)));
 
-    GpuTimer timer;
-    timer.start();
     kernel_l2_aggregate_bw<<<blocks, threads>>>(d_l2, l2_n, iters, d_out);
-    timer.stop();
     CUDA_CHECK(cudaGetLastError());
-    double ms = timer.elapsedMs();
-    double total_bytes = (double)blocks * threads * iters * sizeof(float4);
-    double gbps = total_bytes / (ms * 1e-3) / (1024.0 * 1024.0 * 1024.0);
+    std::vector<double> samples;
+    const double total_bytes = (double)blocks * threads * iters * sizeof(float4);
+    for (int sample = 0; sample < 6; ++sample) {
+      GpuTimer timer;
+      timer.start();
+      kernel_l2_aggregate_bw<<<blocks, threads>>>(d_l2, l2_n, iters, d_out);
+      timer.stop();
+      CUDA_CHECK(cudaGetLastError());
+      double ms = timer.elapsedMs();
+      if (sample) samples.push_back(total_bytes / (ms * 1e-3) / (1024.0 * 1024.0 * 1024.0));
+    }
+    std::sort(samples.begin(), samples.end());
+    double gbps = samples[2];
     printf("  L2 aggregate BW: %.2f GiB/s\n", gbps);
     g_results.log("memory_more", "l2_aggregate_bw_gibps", gbps, "GiB/s");
     CUDA_CHECK(cudaFree(d_out));

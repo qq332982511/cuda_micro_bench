@@ -8,12 +8,14 @@
 
 namespace cmb {
 
+extern __shared__ char smem_raw[];
+
 // Wall-clock kernel: each active warp runs an independent FFMA dependency chain.
 // A single thread records the block-level clock around a __syncthreads() so the
 // measurement reflects scheduler interleaving of all warps.
 __global__ void kernel_warp_scaling(int warps, int iters,
                                     unsigned int *out_cycles) {
-  extern __shared__ float smem[]; // one float per warp
+  float *smem = reinterpret_cast<float *>(smem_raw); // one float per warp
   int tid = threadIdx.x;
   int warp = tid / 32;
 
@@ -36,7 +38,8 @@ __global__ void kernel_warp_scaling(int warps, int iters,
       a = r;
     }
   }
-  smem[warp] = a;
+  if ((tid & 31) == 0) smem[warp] = a;
+  out_cycles[tid + 1] = clockAfter(a);
 
   __syncthreads();
   if (tid == 0)
@@ -47,15 +50,14 @@ __global__ void kernel_warp_scaling(int warps, int iters,
     out_cycles[0] = s_t1 - s_t0;
 }
 
-// Minimal warp-to-SMSP consistency probe: compare cycles/FMA with 1 warp vs
-// 4 warps.  If 4 warps run roughly 4x faster (per FMA) than 1 warp, the
-// scheduler is distributing warps across the 4 SMSPs in a round-robin fashion.
+// Compare one versus four concurrent chains. Scaling is consistent with
+// multiple scheduler partitions, but does not prove static round-robin binding.
 __global__ void kernel_warp_to_smsp_probe(int warps, int iters,
                                           unsigned int *out) {
   int tid = threadIdx.x;
   int warp = tid / 32;
   __shared__ unsigned int s_t0, s_t1;
-  __shared__ float sink[4];
+
   float a = 1.0f + warp * 0.001f;
   const float b = 1.0001f;
   __syncthreads();
@@ -69,7 +71,7 @@ __global__ void kernel_warp_to_smsp_probe(int warps, int iters,
                    : "=f"(r) : "f"(a), "f"(b), "f"(a));
       a = r;
     }
-    sink[warp] = a;
+    out[tid + 1] = clockAfter(a);
   }
   __syncthreads();
   if (tid == 0)
@@ -77,8 +79,7 @@ __global__ void kernel_warp_to_smsp_probe(int warps, int iters,
   __syncthreads();
   if (tid == 0)
     out[0] = s_t1 - s_t0;
-  if (sink[0] == 0xdeadbeef)
-    out[0] = 0;
+
 }
 
 void benchmark_topology_extended() {
@@ -92,7 +93,7 @@ void benchmark_topology_extended() {
   g_results.log("topology", "warps_per_smsp", warps_per_smsp, "");
 
   unsigned int *d_cycles;
-  CUDA_CHECK(cudaMalloc(&d_cycles, sizeof(unsigned int)));
+  CUDA_CHECK(cudaMalloc(&d_cycles, (info.max_threads_per_block + 1) * sizeof(unsigned int)));
 
   // Warp-to-SMSP round-robin check.
   {
@@ -114,10 +115,10 @@ void benchmark_topology_extended() {
 
     double ratio = cyc1 / (cyc4 > 0 ? cyc4 : 1e-9);
     bool consistent = ratio >= 3.5;
-    printf("  Warp-to-SMSP round-robin check: 1-warp %.2f cyc/FMA, 4-warps %.2f cyc/FMA, ratio %.2f (%s)\n",
+    printf("  Warp-to-SMSP concurrent scaling: 1-warp %.2f cyc/FMA, 4-warps %.2f cyc/FMA, ratio %.2f (%s)\n",
            cyc1, cyc4, ratio, consistent ? "consistent" : "inconclusive");
-    g_results.log("topology", "warp_to_smsp_round_robin_ratio", ratio, "");
-    g_results.log("topology", "warp_to_smsp_consistent", consistent ? 1.0 : 0.0,
+    g_results.log("topology", "one_vs_four_warp_scaling_ratio", ratio, "");
+    g_results.log("topology", "four_warp_scaling_consistent", consistent ? 1.0 : 0.0,
                   "bool");
   }
 
@@ -145,20 +146,17 @@ void benchmark_topology_extended() {
       baseline = cyc;
   }
 
-  // Find the first warp count where cycles/FMA rises > 5% above the minimum.
-  // On SM_120 this occurs when any SMSP gets more than 4 warps.
-  for (int w = 1; w <= max_warps; ++w) {
-    if (cyc_per_fma[w] > baseline * 1.05) {
-      full_latency_hiding_warps = w - 1;
-      break;
-    }
+  // Smallest warp count reaching 95% of best aggregate rate in this sweep.
+  // The single-block sweep is capped at 32 warps, below the 48-warps/SM limit.
+  double best_ipc = 0;
+  for (int w = 1; w <= sweep_warps; ++w) best_ipc = std::max(best_ipc, w / cyc_per_fma[w]);
+  for (int w = 1; w <= sweep_warps; ++w) {
+    if (w / cyc_per_fma[w] >= best_ipc * 0.95) { full_latency_hiding_warps = w; break; }
   }
-  if (full_latency_hiding_warps == 0)
-    full_latency_hiding_warps = max_warps;
 
   printf("  SMSPs / SM            : %d\n", smsps);
   printf("  Warps / SMSP (max)    : %d\n", warps_per_smsp);
-  printf("  Full latency hiding   : %d warps/SM (%.2f cyc/FMA baseline)\n",
+  printf("  Sweep 95%% saturation   : %d warps/SM (%.2f cyc/FMA baseline)\n",
          full_latency_hiding_warps, baseline);
 
   // Log a sparse staircase for the report.
@@ -173,7 +171,7 @@ void benchmark_topology_extended() {
       log_pt(w);
   }
 
-  g_results.log("topology", "full_latency_hiding_warps", full_latency_hiding_warps,
+  g_results.log("topology", "sweep_saturation_warps", full_latency_hiding_warps,
                 "warps");
   g_results.log("topology", "warp_scaling_baseline_cyc_per_fma", baseline, "cycles");
 

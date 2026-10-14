@@ -28,9 +28,8 @@ __global__ void kernel_mma_m16n8k4_tf32_latency(unsigned int *cycles, int iters)
   }
   CMB_CLOCK_STOP();
 
-  if ((int)c[0] == 0xdeadbeef)
-    t1 = clockVal();
-  cycles[0] = t1 - t0;
+  CMB_DEPENDENCY_GUARD(c[0]);
+  if (threadIdx.x == 0) cycles[0] = t1 - t0;
 #endif
 }
 
@@ -73,9 +72,8 @@ __global__ void kernel_dmma_f64_latency(unsigned int *cycles, int iters) {
   }
   CMB_CLOCK_STOP();
 
-  if ((int)c[0] == 0xdeadbeef)
-    t1 = clockVal();
-  cycles[0] = t1 - t0;
+  CMB_DEPENDENCY_GUARD(c[0]);
+  if (threadIdx.x == 0) cycles[0] = t1 - t0;
 #endif
 }
 
@@ -98,7 +96,7 @@ __global__ void kernel_dmma_f64_throughput(double *out, int iters) {
 
 // Pipe overlap: FFMA-only chain (per-thread), measured in same config as MMA.
 __global__ void kernel_fma_only_for_overlap(unsigned int *cycles, int iters) {
-  float fa = 1.0f, fb = 1.0001f;
+  float fa = 1.0f + threadIdx.x * 0.001f, fb = 1.0001f;
   __shared__ unsigned int s_t0, s_t1;
   __syncthreads();
   if (threadIdx.x == 0)
@@ -159,7 +157,7 @@ __global__ void kernel_mma_only_for_overlap(unsigned int *cycles, int iters) {
 // Interleaved FFMA + MMA dependent chains.
 __global__ void kernel_fma_mma_mixed(unsigned int *cycles, int iters) {
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 800
-  float fa = 1.0f, fb = 1.0001f;
+  float fa = 1.0f + threadIdx.x * 0.001f, fb = 1.0001f;
   float a[4], b[2], c[4];
   #pragma unroll
   for (int i = 0; i < 4; ++i) a[i] = 1.0f;
@@ -216,10 +214,10 @@ void benchmark_tensor_more() {
     CUDA_CHECK(cudaMemcpy(&h_cycles, d_cycles, sizeof(unsigned int),
                           cudaMemcpyDeviceToHost));
     double cyc = (double)h_cycles / iters;
-    double ns = cyc * 1e9 / info.clock_rate_khz;
-    printf("  DMMA m8n8k4 (FP64) latency: %.2f cycles (%.2f ns)\n", cyc, ns);
+    double ns = cyclesToNominalNs(cyc, info.clock_rate_khz);
+    printf("  DMMA m8n8k4 (FP64) latency: %.2f cycles (%.2f nominal ns)\n", cyc, ns);
     g_results.log("tensor_core_more", "dmma_m8n8k4_latency_cyc", cyc, "cycles");
-    g_results.log("tensor_core_more", "dmma_m8n8k4_latency_ns", ns, "ns");
+    g_results.log("tensor_core_more", "dmma_m8n8k4_latency_ns", ns, "nominal ns");
     CUDA_CHECK(cudaFree(d_cycles));
   }
 
@@ -258,10 +256,10 @@ void benchmark_tensor_more() {
     CUDA_CHECK(cudaMemcpy(&h_cycles, d_cycles, sizeof(unsigned int),
                           cudaMemcpyDeviceToHost));
     double cyc = (double)h_cycles / iters;
-    double ns = cyc * 1e9 / info.clock_rate_khz;
-    printf("  MMA m16n8k4 (TF32) latency: %.2f cycles (%.2f ns)\n", cyc, ns);
+    double ns = cyclesToNominalNs(cyc, info.clock_rate_khz);
+    printf("  MMA m16n8k4 (TF32) latency: %.2f cycles (%.2f nominal ns)\n", cyc, ns);
     g_results.log("tensor_core_more", "mma_m16n8k4_tf32_latency_cyc", cyc, "cycles");
-    g_results.log("tensor_core_more", "mma_m16n8k4_tf32_latency_ns", ns, "ns");
+    g_results.log("tensor_core_more", "mma_m16n8k4_tf32_latency_ns", ns, "nominal ns");
     CUDA_CHECK(cudaFree(d_cycles));
   }
 
@@ -327,13 +325,13 @@ void benchmark_tensor_more() {
     CUDA_CHECK(cudaFree(d_cycles));
   }
 
-  // WGMMA / FP6-FP4 support detection (log only, no actual test)
-  // SM_120 (Blackwell) does not expose wgmma; FP6/FP4 MMA is not available in
-  // this CUDA/PTX revision for our kernel pattern.
-  printf("  wgmma supported: false (SM_%d)\n", cc);
-  g_results.log("tensor_core_more", "wgmma_supported", 0.0, "bool");
-  printf("  FP6/FP4 MMA supported: false\n");
-  g_results.log("tensor_core_more", "fp6_fp4_mma_supported", 0.0, "bool");
+  // ISA availability is distinct from whether this suite has a benchmark.
+  // PTX documents WGMMA only for sm_90a; sm_120a/f supports FP6/FP4 MMA.
+  if (cc == 120) {
+    g_results.log("tensor_core_more", "wgmma_supported", 0.0, "bool (PTX target)");
+    g_results.log("tensor_core_more", "fp6_fp4_mma_supported", 1.0, "bool (requires sm_120a/f)");
+  }
+  g_results.log("tensor_core_more", "fp6_fp4_benchmark_implemented", 0.0, "bool");
 }
 
 } // namespace cmb
